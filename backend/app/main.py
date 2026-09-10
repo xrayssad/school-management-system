@@ -6,7 +6,7 @@ from app.db.base import Base
 from app.db.session import engine
 from app import models  # noqa: F401  -- ensures all models are registered on Base.metadata
 
-from app.api.routes import auth, users, students, teachers, subjects, timetable, exams, attendance, assignments, announcements, events, messages, dashboard
+from app.api.routes import auth, users, students, teachers, subjects, timetable, exams, attendance, assignments, announcements, events, messages, dashboard, committee
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
@@ -45,3 +45,4 @@ app.include_router(announcements.router, prefix=api_prefix)
 app.include_router(events.router, prefix=api_prefix)
 app.include_router(messages.router, prefix=api_prefix)
 app.include_router(dashboard.router, prefix=api_prefix)
+app.include_router(committee.router, prefix=api_prefix)

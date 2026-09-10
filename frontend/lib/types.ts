@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "teacher" | "student";
+export type UserRole = "admin" | "teacher" | "student" | "committee";
 
 export interface StudentProfile {
   id: string;
@@ -168,4 +168,133 @@ export interface TeacherAnalytics {
   grade_distribution: Record<string, number>;
   attendance_by_class: Record<string, number>;
   subject_averages: Record<string, number>;
+}
+
+/* ========== Kamati (Committee) ========== */
+
+export interface CommitteeDashboardStats {
+  total_students: number;
+  total_teachers: number;
+  month_collections: number;
+  month_expenses: number;
+  recent_announcements: {
+    id: string;
+    title: string;
+    created_at: string;
+    target_class_name: string | null;
+  }[];
+}
+
+export interface CommitteeAnnouncement {
+  id: string;
+  title: string;
+  content: string;
+  target_class_id: string | null;
+  target_class_name: string | null;
+  created_by: string;
+  created_at: string;
+  reach_count: number;
+}
+
+export interface TeacherItem {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  subjects: string[];
+  classes: string[];
+}
+
+export interface TeacherAssignment {
+  id: string;
+  teacher_id: string;
+  subject_id: string;
+  subject_name: string;
+  class_id: string;
+  class_name: string;
+}
+
+export interface SalaryRecord {
+  id: string;
+  teacher_id: string;
+  teacher_name: string;
+  amount: number;
+  month: string;
+  paid_at: string;
+  notes: string;
+}
+
+export interface Expense {
+  id: string;
+  amount: number;
+  category: string;
+  month: string;
+  description: string;
+  recorded_at: string;
+}
+
+export interface Collection {
+  id: string;
+  amount: number;
+  source: string;
+  month: string;
+  recorded_at: string;
+}
+
+export interface FinanceSummary {
+  month: string;
+  total_salaries: number;
+  total_expenses: number;
+  total_collections: number;
+  balance: number;
+}
+
+export interface StudentItem {
+  id: string;
+  full_name: string;
+  date_of_birth: string;
+  parent_name: string;
+  parent_phone: string;
+  class_name: string;
+}
+
+export interface SchoolClass {
+  id: string;
+  name: string;
+  student_count: number;
+}
+
+export interface SubjectItem {
+  id: string;
+  name: string;
+}
+
+export type PublishStatus = "draft" | "published";
+
+export interface ExamSchedule {
+  id: string;
+  subject_id: string;
+  subject_name: string;
+  class_id: string;
+  class_name: string;
+  exam_date: string;
+  start_time: string;
+  end_time: string;
+  room: string;
+  status: PublishStatus;
+}
+
+export interface CommitteeTimetableEntry {
+  id: string;
+  subject_id: string;
+  subject_name: string;
+  teacher_id: string;
+  teacher_name: string;
+  class_id: string;
+  class_name: string;
+  day_of_week: number;
+  day_name: string;
+  start_time: string;
+  end_time: string;
+  status: PublishStatus;
 }

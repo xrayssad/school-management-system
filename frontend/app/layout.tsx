@@ -3,16 +3,18 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 
 export const metadata: Metadata = {
-  title: "Al Madrasat Habiib El Mustwafaa | Kigorofani",
-  description:
-    "School management system for Al Madrasat Habiib El Mustwafaa — Qur'an, Tajweed and Islamic studies in Kigorofani.",
-  icons: { icon: "/images/favicon.ico" },
+  title: "Madrasa Habib el Mustwafa",
+  description: "School Management System",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="sw">
+      <body className="antialiased">
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
