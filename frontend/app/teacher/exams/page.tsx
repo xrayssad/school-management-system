@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState, FormEvent } from "react";
+import { Plus, GraduationCap, X, Save } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { Card, Spinner, EmptyState } from "@/components/Card";
 import { api, ApiError } from "@/lib/api";
 import type { Exam, Subject, User, Grade } from "@/lib/types";
+import { colors } from "@/lib/colors";
 
-const CLASS_OPTIONS = ["Darasa la 3", "Darasa la 4", "Darasa la 5", "Darasa la 6"];
+const CLASS_OPTIONS = ["Darasa la 1", "Darasa la 2", "Darasa la 3", "Darasa la 4", "Darasa la 5"];
 
 export default function TeacherExamsPage() {
   const [exams, setExams] = useState<Exam[]>([]);
@@ -14,19 +16,16 @@ export default function TeacherExamsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const [title, setTitle] = useState("");
   const [subjectId, setSubjectId] = useState("");
   const [classFilter, setClassFilter] = useState(CLASS_OPTIONS[0]);
   const [examDate, setExamDate] = useState("");
   const [totalMarks, setTotalMarks] = useState(100);
-
   const [gradingExam, setGradingExam] = useState<Exam | null>(null);
 
   function load() {
     api.get<Exam[]>("/exams").then(setExams).finally(() => setLoading(false));
   }
-
   useEffect(load, []);
   useEffect(() => {
     api.get<Subject[]>("/subjects").then(setSubjects);
@@ -36,12 +35,18 @@ export default function TeacherExamsPage() {
     e.preventDefault();
     setError(null);
     try {
-      await api.post("/exams", { title, subject_id: subjectId || null, class_name: classFilter, exam_date: examDate, total_marks: totalMarks });
+      await api.post("/exams", {
+        title,
+        subject_id: subjectId || null,
+        class_name: classFilter,
+        exam_date: examDate,
+        total_marks: totalMarks,
+      });
       setShowForm(false);
       setTitle("");
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not create exam.");
+      setError(err instanceof ApiError ? err.message : "Imeshindikana kuunda mtihani.");
     }
   }
 
@@ -50,30 +55,39 @@ export default function TeacherExamsPage() {
   return (
     <div>
       <PageHeader
-        title="Exams & grades"
-        subtitle="Create exams and record student scores"
+        title="Mitihani na alama"
+        subtitle="Unda mitihani na weka alama za wanafunzi"
         action={
-          <button onClick={() => setShowForm((s) => !s)} className="rounded-full bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800">
-            {showForm ? "Cancel" : "New exam"}
+          <button
+            onClick={() => setShowForm((s) => !s)}
+            className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-white"
+            style={{ backgroundColor: colors.primary }}
+          >
+            <Plus size={15} />
+            {showForm ? "Ghairi" : "Mtihani mpya"}
           </button>
         }
       />
 
       {showForm && (
         <Card className="mb-6">
-          <form onSubmit={createExam} className="grid gap-3 sm:grid-cols-5">
-            <input required placeholder="Exam title" value={title} onChange={(e) => setTitle(e.target.value)} className="rounded-lg border border-teal-100 px-3 py-2 text-sm sm:col-span-2" />
-            <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)} className="rounded-lg border border-teal-100 px-3 py-2 text-sm">
-              <option value="">Subject</option>
-              {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          <form onSubmit={createExam} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <input required placeholder="Jina la mtihani" value={title} onChange={(e) => setTitle(e.target.value)} className="rounded-lg border px-3 py-2 text-sm sm:col-span-2" style={{ borderColor: colors.line }} />
+            <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: colors.line }}>
+              <option value="">Somo</option>
+              {subjects.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
             </select>
-            <select value={classFilter} onChange={(e) => setClassFilter(e.target.value)} className="rounded-lg border border-teal-100 px-3 py-2 text-sm">
-              {CLASS_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+            <select value={classFilter} onChange={(e) => setClassFilter(e.target.value)} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: colors.line }}>
+              {CLASS_OPTIONS.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
             </select>
-            <input type="date" required value={examDate} onChange={(e) => setExamDate(e.target.value)} className="rounded-lg border border-teal-100 px-3 py-2 text-sm" />
-            <input type="number" min={1} value={totalMarks} onChange={(e) => setTotalMarks(Number(e.target.value))} className="rounded-lg border border-teal-100 px-3 py-2 text-sm" placeholder="Total marks" />
-            <button type="submit" className="rounded-full bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 sm:col-span-5">
-              Create exam
+            <input type="date" required value={examDate} onChange={(e) => setExamDate(e.target.value)} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: colors.line }} />
+            <input type="number" min={1} value={totalMarks} onChange={(e) => setTotalMarks(Number(e.target.value))} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: colors.line }} placeholder="Alama kamili" />
+            <button type="submit" className="rounded-full px-4 py-2 text-sm font-medium text-white sm:col-span-2 lg:col-span-3" style={{ backgroundColor: colors.primary }}>
+              Hifadhi mtihani
             </button>
           </form>
           {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
@@ -81,20 +95,33 @@ export default function TeacherExamsPage() {
       )}
 
       {exams.length === 0 ? (
-        <EmptyState title="No exams yet" description="Create your first exam to start recording grades." />
+        <EmptyState title="Hakuna mitihani bado" description="Unda mtihani wa kwanza ili kuanza kuweka alama." />
       ) : (
         <div className="space-y-3">
           {exams.map((exam) => (
-            <Card key={exam.id} className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-xs text-ink-400">{exam.subject?.name} &middot; {exam.class_name}</p>
-                <h3 className="font-serif text-lg font-semibold text-ink">{exam.title}</h3>
-                <p className="text-xs text-ink-400">{new Date(exam.exam_date).toLocaleDateString()} &middot; out of {exam.total_marks}</p>
+            <div key={exam.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-white p-4" style={{ borderColor: colors.line }}>
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ backgroundColor: colors.soft, color: colors.primary }}>
+                  <GraduationCap size={18} />
+                </div>
+                <div>
+                  <p className="text-xs" style={{ color: colors.stone }}>
+                    {exam.subject?.name} · {exam.class_name}
+                  </p>
+                  <h3 className="font-serif text-lg font-semibold" style={{ color: colors.ink }}>{exam.title}</h3>
+                  <p className="text-xs" style={{ color: colors.stone }}>
+                    {new Date(exam.exam_date).toLocaleDateString("sw-TZ")} · kati ya {exam.total_marks}
+                  </p>
+                </div>
               </div>
-              <button onClick={() => setGradingExam(exam)} className="rounded-full border border-teal-700 px-4 py-2 text-sm font-medium text-teal-800 hover:bg-teal-50">
-                Enter grades
+              <button
+                onClick={() => setGradingExam(exam)}
+                className="rounded-full border px-4 py-2 text-sm font-medium"
+                style={{ borderColor: colors.primary, color: colors.primary }}
+              >
+                Weka alama
               </button>
-            </Card>
+            </div>
           ))}
         </div>
       )}
@@ -134,7 +161,11 @@ function GradingModal({ exam, onClose }: { exam: Exam; onClose: () => void }) {
     if (value === undefined || value === "") return;
     setSavingId(studentId);
     try {
-      await api.post("/grades", { exam_id: exam.id, student_id: studentId, marks_obtained: Number(value) });
+      await api.post("/grades", {
+        exam_id: exam.id,
+        student_id: studentId,
+        marks_obtained: Number(value),
+      });
     } finally {
       setSavingId(null);
     }
@@ -142,22 +173,29 @@ function GradingModal({ exam, onClose }: { exam: Exam; onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-xl2 bg-white p-6">
+      <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6">
         <div className="flex items-center justify-between">
-          <h2 className="font-serif text-lg font-semibold text-ink">{exam.title}</h2>
-          <button onClick={onClose} className="text-ink-400 hover:text-ink">&#10005;</button>
+          <h2 className="font-serif text-lg font-semibold" style={{ color: colors.ink }}>{exam.title}</h2>
+          <button type="button" onClick={onClose} className="rounded-md p-1" style={{ color: colors.stone }}>
+            <X size={18} />
+          </button>
         </div>
-        <p className="mt-1 text-sm text-ink-400">{exam.class_name} &middot; out of {exam.total_marks}</p>
-
+        <p className="mt-1 text-sm" style={{ color: colors.stone }}>
+          {exam.class_name} · kati ya {exam.total_marks}
+        </p>
         {loading ? (
           <Spinner />
         ) : (
           <div className="mt-4 space-y-3">
             {students.map((s) => (
               <div key={s.id} className="flex items-center gap-3">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-ink">{s.full_name}</p>
-                  {existingGrades[s.id] && <p className="text-xs text-ink-400">Current: {existingGrades[s.id].grade_letter}</p>}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium" style={{ color: colors.ink }}>{s.full_name}</p>
+                  {existingGrades[s.id] && (
+                    <p className="text-xs" style={{ color: colors.stone }}>
+                      Sasa: {existingGrades[s.id].grade_letter}
+                    </p>
+                  )}
                 </div>
                 <input
                   type="number"
@@ -165,14 +203,18 @@ function GradingModal({ exam, onClose }: { exam: Exam; onClose: () => void }) {
                   max={exam.total_marks}
                   value={marks[s.id] ?? ""}
                   onChange={(e) => setMarks((m) => ({ ...m, [s.id]: e.target.value }))}
-                  className="w-20 rounded-lg border border-teal-100 px-2 py-1.5 text-sm"
+                  className="w-20 rounded-lg border px-2 py-1.5 text-sm"
+                  style={{ borderColor: colors.line }}
                 />
                 <button
+                  type="button"
                   onClick={() => saveGrade(s.id)}
                   disabled={savingId === s.id}
-                  className="rounded-full bg-teal-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-800 disabled:opacity-60"
+                  className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+                  style={{ backgroundColor: colors.primary }}
                 >
-                  {savingId === s.id ? "\u2026" : "Save"}
+                  <Save size={12} />
+                  {savingId === s.id ? "…" : "Hifadhi"}
                 </button>
               </div>
             ))}

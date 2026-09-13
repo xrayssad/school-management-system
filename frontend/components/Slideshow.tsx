@@ -1,50 +1,131 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { colors } from "@/lib/colors";
 
-const SLIDES = [
-  { src: "/images/pici1.jpg", alt: "Students reciting Qur'an together in class" },
-  { src: "/images/pici2.jpg", alt: "Boys and girls studying in separate rows during lesson" },
-  { src: "/images/pici3.jpg", alt: "Girls in hijab reading from their Qur'an copies" },
+export type Slide = {
+  src: string;
+  alt: string;
+  caption?: string;
+};
+
+const DEFAULT_SLIDES: Slide[] = [
+  {
+    src: "/images/pici1.jpg",
+    alt: "Wanafunzi wakisoma Qurani",
+    caption: "Masomo ya kila siku ya Qurani na Tajwid",
+  },
+  {
+    src: "/images/pici2.jpg",
+    alt: "Mazingira ya kujifunza",
+    caption: "Mazingira tulivu kwa kila mwanafunzi",
+  },
+  {
+    src: "/images/pici3.jpg",
+    alt: "Wanafunzi darasani",
+    caption: "Ufuatiliaji wa maendeleo",
+  },
 ];
 
-export default function Slideshow() {
+type SlideshowProps = {
+  slides?: Slide[];
+  intervalMs?: number;
+  className?: string;
+  showDots?: boolean;
+};
+
+export default function Slideshow({
+  slides = DEFAULT_SLIDES,
+  intervalMs = 5000,
+  className = "",
+  showDots = true,
+}: SlideshowProps) {
   const [index, setIndex] = useState(0);
+  const [prev, setPrev] = useState(0);
+
+  const goTo = useCallback(
+    (next: number) => {
+      if (next === index) return;
+      setPrev(index);
+      setIndex(next);
+    },
+    [index]
+  );
 
   useEffect(() => {
-    const id = setInterval(() => setIndex((i) => (i + 1) % SLIDES.length), 4500);
+    const id = setInterval(() => {
+      setIndex((i) => {
+        setPrev(i);
+        return (i + 1) % slides.length;
+      });
+    }, intervalMs);
     return () => clearInterval(id);
-  }, []);
+  }, [slides.length, intervalMs]);
+
+  const active = slides[index];
 
   return (
-    <div className="relative">
-      <div className="absolute -right-4 -top-4 h-full w-full rounded-xl2 border-2 border-gold-400/50" aria-hidden />
-      <div className="relative aspect-[4/5] w-full overflow-hidden rounded-xl2 shadow-soft">
-        {SLIDES.map((slide, i) => (
-          <div
-            key={slide.src}
-            className="absolute inset-0 transition-opacity duration-1000 ease-in-out"
-            style={{ opacity: i === index ? 1 : 0 }}
-          >
-            <Image src={slide.src} alt={slide.alt} fill priority={i === 0} sizes="(max-width: 768px) 90vw, 480px" className="object-cover" />
-          </div>
-        ))}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-teal-900/70 to-transparent p-5">
-          <p className="text-sm font-medium text-white">Daily lessons in Qur&apos;an, Tajweed &amp; Islamic studies</p>
+    <div className={`relative w-full ${className}`}>
+      <div
+        className="relative overflow-hidden rounded-xl border"
+        style={{ borderColor: "rgba(255,255,255,0.2)", backgroundColor: "rgba(0,0,0,0.15)" }}
+      >
+        <div className="relative aspect-[16/10] w-full">
+          {slides.map((slide, i) => {
+            const isActive = i === index;
+            return (
+              <div
+                key={slide.src}
+                className="absolute inset-0"
+                style={{
+                  zIndex: isActive ? 2 : i === prev ? 1 : 0,
+                  clipPath: isActive ? "inset(0 0 0 0)" : "inset(0 100% 0 0)",
+                  transition: isActive
+                    ? "clip-path 0.85s cubic-bezier(0.22, 1, 0.36, 1)"
+                    : "none",
+                }}
+              >
+                <Image
+                  src={slide.src}
+                  alt={slide.alt}
+                  fill
+                  priority={i === 0}
+                  sizes="(max-width: 1024px) 90vw, 480px"
+                  className="object-cover"
+                />
+              </div>
+            );
+          })}
+          {active?.caption && (
+            <div
+              className="absolute inset-x-0 bottom-0 z-10 px-4 py-3"
+              style={{
+                background: `linear-gradient(to top, ${colors.primary}F0, transparent)`,
+              }}
+            >
+              <p className="text-xs font-medium text-white sm:text-sm">{active.caption}</p>
+            </div>
+          )}
         </div>
       </div>
-      <div className="mt-4 flex justify-center gap-2">
-        {SLIDES.map((slide, i) => (
-          <button
-            key={slide.src}
-            onClick={() => setIndex(i)}
-            aria-label={`Show slide ${i + 1}`}
-            className="h-1.5 rounded-full transition-all"
-            style={{ width: i === index ? 24 : 8, backgroundColor: i === index ? "#0B4F45" : "#CFE4DF" }}
-          />
-        ))}
-      </div>
+      {showDots && (
+        <div className="mt-3 flex justify-center gap-1.5">
+          {slides.map((s, i) => (
+            <button
+              key={s.src}
+              type="button"
+              aria-label={`Picha ${i + 1}`}
+              onClick={() => goTo(i)}
+              className="h-1 rounded-full transition-all"
+              style={{
+                width: i === index ? 22 : 7,
+                backgroundColor: i === index ? "#fff" : "rgba(255,255,255,0.35)",
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

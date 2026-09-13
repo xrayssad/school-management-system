@@ -1,13 +1,21 @@
 "use client";
 
 import { useEffect, useState, FormEvent } from "react";
+import { Plus, Clock } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { Card, Spinner } from "@/components/Card";
 import { api, ApiError } from "@/lib/api";
 import type { TimetableEntry, Subject } from "@/lib/types";
+import { colors } from "@/lib/colors";
 
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-const CLASS_OPTIONS = ["Darasa la 3", "Darasa la 4", "Darasa la 5", "Darasa la 6"];
+const DAYS = [
+  { en: "Monday", sw: "Jumatatu" },
+  { en: "Tuesday", sw: "Jumanne" },
+  { en: "Wednesday", sw: "Jumatano" },
+  { en: "Thursday", sw: "Alhamisi" },
+  { en: "Friday", sw: "Ijumaa" },
+];
+const CLASS_OPTIONS = ["Darasa la 1", "Darasa la 2", "Darasa la 3", "Darasa la 4", "Darasa la 5"];
 
 export default function SchedulePage() {
   const [entries, setEntries] = useState<TimetableEntry[]>([]);
@@ -16,8 +24,7 @@ export default function SchedulePage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const [day, setDay] = useState(DAYS[0]);
+  const [day, setDay] = useState(DAYS[0].en);
   const [subjectId, setSubjectId] = useState("");
   const [start, setStart] = useState("08:00");
   const [end, setEnd] = useState("09:00");
@@ -30,7 +37,6 @@ export default function SchedulePage() {
       .then(setEntries)
       .finally(() => setLoading(false));
   }
-
   useEffect(load, [classFilter]);
   useEffect(() => {
     api.get<Subject[]>("/subjects").then(setSubjects);
@@ -52,18 +58,23 @@ export default function SchedulePage() {
       setShowForm(false);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not create entry.");
+      setError(err instanceof ApiError ? err.message : "Imeshindikana kuhifadhi kipindi.");
     }
   }
 
   return (
     <div>
       <PageHeader
-        title="Schedule"
-        subtitle="Manage the weekly timetable"
+        title="Ratiba"
+        subtitle="Simamia ratiba ya wiki"
         action={
-          <button onClick={() => setShowForm((s) => !s)} className="rounded-full bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800">
-            {showForm ? "Cancel" : "Add lesson"}
+          <button
+            onClick={() => setShowForm((s) => !s)}
+            className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-white"
+            style={{ backgroundColor: colors.primary }}
+          >
+            <Plus size={15} />
+            {showForm ? "Ghairi" : "Ongeza kipindi"}
           </button>
         }
       />
@@ -72,10 +83,13 @@ export default function SchedulePage() {
         {CLASS_OPTIONS.map((c) => (
           <button
             key={c}
+            type="button"
             onClick={() => setClassFilter(c)}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-              classFilter === c ? "bg-teal-700 text-white" : "bg-sage text-ink-600"
-            }`}
+            className="rounded-full px-4 py-2 text-sm font-medium"
+            style={{
+              backgroundColor: classFilter === c ? colors.primary : colors.soft,
+              color: classFilter === c ? "#fff" : colors.primary,
+            }}
           >
             {c}
           </button>
@@ -84,19 +98,23 @@ export default function SchedulePage() {
 
       {showForm && (
         <Card className="mb-6">
-          <form onSubmit={createEntry} className="grid gap-3 sm:grid-cols-5">
-            <select value={day} onChange={(e) => setDay(e.target.value)} className="rounded-lg border border-teal-100 px-3 py-2 text-sm">
-              {DAYS.map((d) => <option key={d} value={d}>{d}</option>)}
+          <form onSubmit={createEntry} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <select value={day} onChange={(e) => setDay(e.target.value)} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: colors.line }}>
+              {DAYS.map((d) => (
+                <option key={d.en} value={d.en}>{d.sw}</option>
+              ))}
             </select>
-            <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)} className="rounded-lg border border-teal-100 px-3 py-2 text-sm">
-              <option value="">Select subject</option>
-              {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: colors.line }}>
+              <option value="">Chagua somo</option>
+              {subjects.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
             </select>
-            <input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="rounded-lg border border-teal-100 px-3 py-2 text-sm" />
-            <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className="rounded-lg border border-teal-100 px-3 py-2 text-sm" />
-            <input placeholder="Room" value={room} onChange={(e) => setRoom(e.target.value)} className="rounded-lg border border-teal-100 px-3 py-2 text-sm" />
-            <button type="submit" className="rounded-full bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 sm:col-span-5">
-              Save lesson
+            <input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: colors.line }} />
+            <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: colors.line }} />
+            <input placeholder="Chumba" value={room} onChange={(e) => setRoom(e.target.value)} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: colors.line }} />
+            <button type="submit" className="rounded-full px-4 py-2 text-sm font-medium text-white sm:col-span-2 lg:col-span-5" style={{ backgroundColor: colors.primary }}>
+              Hifadhi kipindi
             </button>
           </form>
           {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
@@ -106,18 +124,29 @@ export default function SchedulePage() {
       {loading ? (
         <Spinner />
       ) : (
-        <div className="grid gap-5 lg:grid-cols-5">
+        <div className="grid gap-4 lg:grid-cols-5">
           {DAYS.map((d) => (
-            <div key={d}>
-              <h2 className="mb-3 font-serif text-sm font-semibold uppercase tracking-wide text-teal-800">{d}</h2>
-              <div className="space-y-3">
-                {entries.filter((e) => e.day_of_week === d).map((entry) => (
-                  <Card key={entry.id}>
-                    <p className="text-xs text-ink-400">{entry.start_time} &ndash; {entry.end_time}</p>
-                    <p className="mt-1 font-medium text-ink">{entry.subject?.name ?? entry.entry_type}</p>
-                    {entry.room && <p className="text-xs text-ink-400">{entry.room}</p>}
-                  </Card>
-                ))}
+            <div key={d.en}>
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide" style={{ color: colors.primary }}>
+                {d.sw}
+              </h2>
+              <div className="space-y-2">
+                {entries
+                  .filter((e) => e.day_of_week === d.en)
+                  .map((entry) => (
+                    <div key={entry.id} className="rounded-xl border bg-white p-3" style={{ borderColor: colors.line }}>
+                      <p className="flex items-center gap-1 text-xs" style={{ color: colors.stone }}>
+                        <Clock size={12} />
+                        {entry.start_time} – {entry.end_time}
+                      </p>
+                      <p className="mt-1 text-sm font-medium" style={{ color: colors.ink }}>
+                        {entry.subject?.name ?? entry.entry_type}
+                      </p>
+                      {entry.room && (
+                        <p className="text-xs" style={{ color: colors.stone }}>{entry.room}</p>
+                      )}
+                    </div>
+                  ))}
               </div>
             </div>
           ))}

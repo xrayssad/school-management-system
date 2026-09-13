@@ -11,31 +11,107 @@ import {
   EyeOff,
   ArrowRight,
   BookOpen,
-  Users,
   ShieldCheck,
   AlertCircle,
+  GraduationCap,
+  Users,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api";
 import { colors } from "@/lib/colors";
+import Slideshow, { type Slide } from "@/components/Slideshow";
 
 const PORTAL_USERS = [
-  {
-    role: "Mwalimu",
-    email: "ahmed.ali@madrasa.sc.tz",
-    password: "Teacher@123",
-  },
+  { role: "Mwalimu", email: "ahmed.ali@madrasa.sc.tz", password: "Teacher@123", icon: Users },
   {
     role: "Mwanafunzi",
     email: "ahmed.mohammed@student.madrasa.sc.tz",
     password: "Student@123",
+    icon: GraduationCap,
   },
 ];
+
+const LOGIN_SLIDES: Slide[] = [
+  { src: "/images/pici1.jpg", alt: "Wanafunzi", caption: "Karibu tena — endelea na safari yako" },
+  { src: "/images/q1.jpg", alt: "Qurani", caption: "Qurani ndio msingi wa kila somo" },
+  { src: "/images/pici2.jpg", alt: "Darasa", caption: "Mazingira tulivu ya kujifunza" },
+];
+
+const BOOK_CSS = `
+.auth-book .book-field {
+  display: flex;
+  align-items: stretch;
+  min-height: 46px;
+  background: #fff;
+  border: 2px solid #18453B;
+  border-radius: 3px 14px 14px 3px;
+  box-shadow: 2px 2px 0 rgba(24,69,59,0.07);
+  overflow: hidden;
+  transition: box-shadow 0.15s ease;
+}
+.auth-book .book-field:focus-within {
+  box-shadow: 0 0 0 3px rgba(24,69,59,0.14);
+}
+.auth-book .book-spine {
+  width: 11px;
+  flex-shrink: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    #0F2F28 0px,
+    #0F2F28 2px,
+    #18453B 2px,
+    #18453B 5px
+  );
+}
+.auth-book .book-page {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: linear-gradient(to right, #F4F8F6 0%, #FFFFFF 12%);
+  min-width: 0;
+}
+.auth-book .book-edge {
+  width: 7px;
+  flex-shrink: 0;
+  background: linear-gradient(to right, #D7E5DF, #F7FAF8);
+  border-left: 1px solid #C5D4CC;
+}
+.auth-book .book-page .ico {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #18453B;
+  pointer-events: none;
+}
+.auth-book .book-page input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  padding: 12px 40px 12px 34px;
+  font-size: 14px;
+  color: #1A231F;
+  caret-color: #18453B;
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2318453B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20h9'/%3E%3Cpath d='M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z'/%3E%3C/svg%3E") 2 22, text;
+}
+.auth-book .book-toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  padding: 6px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+`;
 
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -47,248 +123,110 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
-
     try {
-      const user = await login(email, password);
-
-      if (user.role === "committee") {
-        router.push("/committee/dashboard");
-      } else if (user.role === "teacher" || user.role === "admin") {
-        router.push("/teacher/dashboard");
-      } else {
-        router.push("/dashboard");
-      }
+      const user = await login(email.trim(), password);
+      if (user.role === "committee") router.push("/committee/dashboard");
+      else if (user.role === "teacher" || user.role === "admin") router.push("/teacher/dashboard");
+      else router.push("/dashboard");
     } catch (err) {
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : "Imeshindikana kuingia. Tafadhali jaribu tena."
-      );
+      setError(err instanceof ApiError ? err.message : "Imeshindikana kuingia. Jaribu tena.");
     } finally {
       setSubmitting(false);
     }
   }
 
-  function fillDemo(user: (typeof PORTAL_USERS)[number]) {
-    setEmail(user.email);
-    setPassword(user.password);
-    setActiveDemo(user.role);
-    setError(null);
-  }
-
   return (
     <div
-      className="flex min-h-screen items-center justify-center px-4 py-10"
+      className="auth-book flex min-h-screen items-center justify-center px-4 py-8"
       style={{ backgroundColor: colors.soft }}
     >
-      <div className="grid w-full max-w-4xl overflow-hidden rounded-2xl border bg-white lg:grid-cols-12"
+      <style dangerouslySetInnerHTML={{ __html: BOOK_CSS }} />
+      <div
+        className="grid w-full max-w-5xl overflow-hidden rounded-2xl border bg-white lg:grid-cols-12"
         style={{ borderColor: colors.line }}
       >
-        {/* ========== LEFT: FORM ========== */}
-        <div className="col-span-full flex items-center justify-center p-8 sm:p-10 lg:col-span-7">
+        <div className="col-span-full flex items-center justify-center p-8 sm:p-10 lg:col-span-6">
           <div className="w-full max-w-sm">
-            {/* Brand */}
             <Link href="/" className="mb-8 inline-flex items-center gap-2.5">
-             <Image
-  src="/images/logo2.jpg"
-  alt="Nembo ya madrasa"
-  width={38}
-  height={38}
-  className="rounded-full object-cover"
-  style={{ width: "auto", height: "auto" }}
-/>
+              <Image src="/images/logo2.jpg" alt="Nembo" width={40} height={40} className="rounded-full object-cover" style={{ width: 40, height: 40 }} />
               <div>
-                <p
-                  className="font-serif text-sm font-semibold leading-tight"
-                  style={{ color: colors.primary }}
-                >
-                  Al Madrasat Habiib
-                </p>
-                <p className="text-[11px]" style={{ color: colors.stone }}>
-                  Kigorofani, Zanzibar
-                </p>
+                <p className="font-serif text-sm font-semibold" style={{ color: colors.primary }}>Al Madrasat Habiib</p>
+                <p className="text-[11px]" style={{ color: colors.stone }}>Kigorofani, Zanzibar</p>
               </div>
             </Link>
 
-            {/* Heading */}
-            <h1
-              className="font-serif text-3xl font-semibold leading-tight"
-              style={{ color: colors.primary }}
-            >
-              Karibu tena.
-            </h1>
-            <p className="mt-1.5 text-sm leading-relaxed" style={{ color: colors.stone }}>
-              Ingia kwenye portal yako ya madrasa.
-            </p>
+            <h1 className="font-serif text-3xl font-semibold" style={{ color: colors.primary }}>Karibu tena</h1>
+            <p className="mt-1.5 text-sm" style={{ color: colors.stone }}>Ingia kwenye portali ya madrasa.</p>
 
-            {/* Form */}
             <form onSubmit={onSubmit} className="mt-8 space-y-4">
               <div>
-                <label
-                  htmlFor="email"
-                  className="mb-1.5 block text-xs font-medium uppercase tracking-wider"
-                  style={{ color: colors.primary }}
-                >
-                  Barua Pepe
-                </label>
-                <div className="relative">
-                  <Mail
-                    size={15}
-                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2"
-                    style={{ color: colors.stone }}
-                  />
-                  <input
-                    id="email"
-                    type="email"
-                    required
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full rounded-lg border bg-white py-2.5 pl-10 pr-3 text-sm outline-none transition-colors"
-                    style={{ borderColor: colors.line, color: colors.ink }}
-                    placeholder="jina@madrasa.sc.tz"
-                  />
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider" style={{ color: colors.primary }}>Barua pepe</label>
+                <div className="book-field">
+                  <div className="book-spine" aria-hidden />
+                  <div className="book-page">
+                    <Mail size={15} className="ico" />
+                    <input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="jina@mfano.co.tz" />
+                  </div>
+                  <div className="book-edge" aria-hidden />
                 </div>
               </div>
 
               <div>
-                <div className="mb-1.5 flex items-center justify-between">
-                  <label
-                    htmlFor="password"
-                    className="block text-xs font-medium uppercase tracking-wider"
-                    style={{ color: colors.primary }}
-                  >
-                    Nenosiri
-                  </label>
-                  <Link
-                    href="/forgot-password"
-                    className="text-[11px] font-medium hover:underline"
-                    style={{ color: colors.primary }}
-                  >
-                    Umesahau?
-                  </Link>
-                </div>
-                <div className="relative">
-                  <Lock
-                    size={15}
-                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2"
-                    style={{ color: colors.stone }}
-                  />
-                  <input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    required
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full rounded-lg border bg-white py-2.5 pl-10 pr-10 text-sm outline-none transition-colors"
-                    style={{ borderColor: colors.line, color: colors.ink }}
-                    placeholder="Weka nenosiri lako"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1.5 transition-colors hover:bg-[#F4F8F7]"
-                    aria-label={showPassword ? "Ficha nenosiri" : "Onyesha nenosiri"}
-                  >
-                    {showPassword ? (
-                      <EyeOff size={14} style={{ color: colors.stone }} />
-                    ) : (
-                      <Eye size={14} style={{ color: colors.stone }} />
-                    )}
-                  </button>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider" style={{ color: colors.primary }}>Nenosiri</label>
+                <div className="book-field">
+                  <div className="book-spine" aria-hidden />
+                  <div className="book-page">
+                    <Lock size={15} className="ico" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Andika nenosiri…"
+                    />
+                    <button type="button" className="book-toggle" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Ficha" : "Onyesha"}>
+                      {showPassword ? <EyeOff size={14} style={{ color: colors.stone }} /> : <Eye size={14} style={{ color: colors.stone }} />}
+                    </button>
+                  </div>
+                  <div className="book-edge" aria-hidden />
                 </div>
               </div>
 
               {error && (
-                <div
-                  className="flex items-start gap-2 rounded-lg border px-3 py-2.5 text-xs"
-                  style={{ borderColor: "#FCA5A5", backgroundColor: "#FEF2F2", color: "#991B1B" }}
-                >
+                <div className="flex items-start gap-2 rounded-lg border px-3 py-2.5 text-xs" style={{ borderColor: "#FCA5A5", backgroundColor: "#FEF2F2", color: "#991B1B" }}>
                   <AlertCircle size={14} className="mt-0.5 shrink-0" />
-                  <span>{error}</span>
+                  {error}
                 </div>
               )}
 
-              <button
-                type="submit"
-                disabled={submitting}
-                className="group flex w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-medium text-white transition-opacity hover:opacity-95 disabled:opacity-60"
-                style={{ backgroundColor: colors.primary }}
-              >
-                {submitting ? "Inaingia..." : "Ingia kwenye portal"}
-                {!submitting && (
-                  <ArrowRight
-                    size={15}
-                    className="transition-transform group-hover:translate-x-0.5"
-                  />
-                )}
+              <button type="submit" disabled={submitting} className="group flex w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold text-white disabled:opacity-60" style={{ backgroundColor: colors.primary }}>
+                {submitting ? "Inaingia…" : "Ingia"}
+                {!submitting && <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" />}
               </button>
             </form>
 
-            {/* Register link */}
             <p className="mt-6 text-center text-xs" style={{ color: colors.stone }}>
-              Hauna akaunti bado?{" "}
-              <Link
-                href="/register"
-                className="font-medium hover:underline"
-                style={{ color: colors.primary }}
-              >
-                Fungua akaunti mpya
-              </Link>
+              Hauna akaunti?{" "}
+              <Link href="/register" className="font-semibold hover:underline" style={{ color: colors.primary }}>Jisajili</Link>
             </p>
 
-            {/* Demo credentials */}
-            <div
-              className="mt-8 rounded-xl border p-4"
-              style={{ borderColor: colors.line, backgroundColor: colors.soft }}
-            >
-              <div className="flex items-center gap-2">
+            <div className="mt-8 rounded-xl border p-3" style={{ borderColor: colors.line, backgroundColor: colors.soft }}>
+              <div className="mb-2 flex items-center gap-2">
                 <ShieldCheck size={13} style={{ color: colors.primary }} />
-                <p
-                  className="text-[11px] font-medium uppercase tracking-wider"
-                  style={{ color: colors.primary }}
-                >
-                  Akaunti za majaribio
-                </p>
+                <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: colors.primary }}>Majaribio</span>
               </div>
-              <p className="mt-1.5 text-[11px] leading-relaxed" style={{ color: colors.stone }}>
-                Bonyeza mojawapo ili kujaza taarifa moja kwa moja.
-              </p>
-
-              <div className="mt-3 grid gap-1.5">
-                {PORTAL_USERS.map((user) => {
-                  const isActive = activeDemo === user.role;
+              <div className="grid gap-1.5">
+                {PORTAL_USERS.map((u) => {
+                  const Icon = u.icon;
+                  const on = activeDemo === u.role;
                   return (
-                    <button
-                      key={user.role}
-                      type="button"
-                      onClick={() => fillDemo(user)}
-                      className="flex items-center justify-between rounded-lg border bg-white px-3 py-2 text-left transition-colors"
-                      style={{
-                        borderColor: isActive ? colors.primary : colors.line,
-                      }}
-                    >
-                      <div className="min-w-0">
-                        <p
-                          className="text-xs font-medium"
-                          style={{ color: isActive ? colors.primary : colors.ink }}
-                        >
-                          {user.role}
-                        </p>
-                        <p
-                          className="mt-0.5 truncate text-[10px]"
-                          style={{ color: colors.stone }}
-                        >
-                          {user.email}
-                        </p>
+                    <button key={u.role} type="button" onClick={() => { setEmail(u.email); setPassword(u.password); setActiveDemo(u.role); setError(null); }} className="flex items-center gap-3 rounded-lg border bg-white px-3 py-2 text-left" style={{ borderColor: on ? colors.primary : colors.line }}>
+                      <Icon size={16} style={{ color: colors.primary }} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold" style={{ color: colors.ink }}>{u.role}</p>
+                        <p className="truncate text-[10px]" style={{ color: colors.stone }}>{u.email}</p>
                       </div>
-                      <span
-                        className="ml-2 shrink-0 text-[10px] font-medium"
-                        style={{ color: isActive ? colors.primary : colors.stone }}
-                      >
-                        {isActive ? "Imejazwa" : "Jaza"}
-                      </span>
                     </button>
                   );
                 })}
@@ -297,62 +235,18 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* ========== RIGHT: BRAND PANEL ========== */}
-        <div
-          className="relative hidden overflow-hidden lg:col-span-5 lg:flex lg:flex-col lg:justify-between"
-          style={{ backgroundColor: colors.primary }}
-        >
-          <div className="geo-pattern absolute inset-0 opacity-[0.08]" aria-hidden />
-
-          <div className="relative p-8">
+        <div className="relative hidden flex-col overflow-hidden lg:col-span-6 lg:flex" style={{ backgroundColor: colors.primary }}>
+          <div className="relative flex flex-1 flex-col p-6">
             <div className="flex items-center gap-2 text-white/70">
-              <BookOpen size={14} strokeWidth={1.75} />
-              <span className="text-[10px] font-medium uppercase tracking-[0.2em]">
-                Madrasa ya Kiislamu
-              </span>
+              <BookOpen size={14} />
+              <span className="text-[10px] font-medium uppercase tracking-[0.18em]">Madrasa ya Kiislamu</span>
             </div>
-
-            <h2 className="mt-6 font-serif text-2xl font-semibold leading-[1.2] text-white">
-              Kila somo ni hatua moja karibu zaidi na Qur'ani.
-            </h2>
-
-            <p className="mt-4 text-xs leading-relaxed text-white/70">
-              Portal inawaunganisha wanafunzi, walimu na wazazi katika safari moja ya kujifunza.
-            </p>
-
-            <div className="mt-8 space-y-4">
-              {[
-                { icon: BookOpen, title: "Mtaala Kamili", desc: "Masomo 9 ya msingi." },
-                { icon: Users, title: "Walimu wa Uzoefu", desc: "Ufuatiliaji wa kila mwanafunzi." },
-                { icon: ShieldCheck, title: "Usalama", desc: "Taarifa zako zinalindwa." },
-              ].map((item) => {
-                const Icon = item.icon;
-                return (
-                  <div key={item.title} className="flex items-start gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/10">
-                      <Icon size={14} className="text-white" strokeWidth={1.75} />
-                    </div>
-                    <div>
-                      <p className="font-serif text-sm font-semibold text-white">
-                        {item.title}
-                      </p>
-                      <p className="mt-0.5 text-[11px] leading-relaxed text-white/60">
-                        {item.desc}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
+            <h2 className="mt-4 font-serif text-xl font-semibold leading-snug text-white">Kila somo ni hatua moja karibu na Qurani.</h2>
+            <div className="mt-5 flex-1"><Slideshow slides={LOGIN_SLIDES} intervalMs={4800} showDots /></div>
+            <div className="mt-6 border-t border-white/15 pt-5">
+              <p className="font-serif text-sm italic text-white/85">&ldquo;Bora wenu ni yule anayejifunza Qurani na kuifundisha.&rdquo;</p>
+              <p className="mt-2 text-[10px] uppercase tracking-wider text-white/45">Hadith — Bukhari</p>
             </div>
-          </div>
-
-          <div className="relative border-t border-white/10 p-8">
-            <p className="font-serif text-sm italic leading-relaxed text-white/80">
-              &ldquo;Bora wenu ni yule anayejifunza Qur'ani na kuifundisha.&rdquo;
-            </p>
-            <p className="mt-2 text-[10px] uppercase tracking-[0.15em] text-white/50">
-              Hadith — Bukhari
-            </p>
           </div>
         </div>
       </div>

@@ -1,81 +1,117 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { Users, GraduationCap, Wallet, TrendingDown, Megaphone, ArrowRight } from 'lucide-react';
-import Link from 'next/link';
-import { committeeApi } from '@/lib/api';
-import type { CommitteeDashboardStats } from '@/lib/types';
-import { colors } from '@/lib/colors';
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import {
+  Users,
+  GraduationCap,
+  Wallet,
+  TrendingDown,
+  Megaphone,
+  ArrowRight,
+  CalendarClock,
+  Calendar,
+  RefreshCw,
+} from "lucide-react";
+import { committeeApi } from "@/lib/api";
+import type { CommitteeDashboardStats } from "@/lib/types";
+import { colors } from "@/lib/colors";
 
-function formatMoney(amount: number): string {
-  return `TSh ${amount.toLocaleString('sw-TZ')}`;
+function formatMoney(amount: number) {
+  return `TSh ${amount.toLocaleString("sw-TZ")}`;
 }
 
 export default function CommitteeDashboardPage() {
   const [stats, setStats] = useState<CommitteeDashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+
+  async function load() {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await committeeApi.dashboard();
+      setStats(data);
+      setUpdatedAt(new Date());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Imeshindikana kupakia dashibodi.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function loadDashboard() {
-      setLoading(true);
-      setError('');
-      try {
-        const data = await committeeApi.dashboard();
-        if (!cancelled) setStats(data);
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Imeshindikana kupakia dashibodi.');
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    loadDashboard();
-    return () => { cancelled = true; };
+    load();
   }, []);
 
-  const statCards = stats ? [
-    { label: 'Wanafunzi', value: String(stats.total_students), icon: GraduationCap, href: '/committee/students' },
-    { label: 'Walimu', value: String(stats.total_teachers), icon: Users, href: '/committee/teachers' },
-    { label: 'Mapato (mwezi)', value: formatMoney(stats.month_collections), icon: Wallet, href: '/committee/finance' },
-    { label: 'Matumizi (mwezi)', value: formatMoney(stats.month_expenses), icon: TrendingDown, href: '/committee/finance' },
-  ] : [];
+  const cards = stats
+    ? [
+        { label: "Wanafunzi", value: String(stats.total_students), icon: GraduationCap, href: "/committee/students" },
+        { label: "Walimu", value: String(stats.total_teachers), icon: Users, href: "/committee/teachers" },
+        { label: "Mapato (mwezi)", value: formatMoney(stats.month_collections), icon: Wallet, href: "/committee/finance" },
+        { label: "Matumizi (mwezi)", value: formatMoney(stats.month_expenses), icon: TrendingDown, href: "/committee/finance" },
+      ]
+    : [];
+
+  const quick = [
+    { href: "/committee/announcements", label: "Tangazo", icon: Megaphone },
+    { href: "/committee/finance", label: "Fedha", icon: Wallet },
+    { href: "/committee/exams", label: "Mitihani", icon: CalendarClock },
+    { href: "/committee/timetable", label: "Ratiba", icon: Calendar },
+  ];
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="font-serif text-2xl font-semibold" style={{ color: colors.primary }}>
-          Dashibodi ya Kamati
-        </h1>
-        <p className="mt-1 text-sm" style={{ color: colors.stone }}>
-          Muhtasari wa haraka wa madrasa
-        </p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-serif text-2xl font-semibold" style={{ color: colors.primary }}>
+            Dashibodi ya Kamati
+          </h1>
+          <p className="mt-1 text-sm" style={{ color: colors.stone }}>
+            Muhtasari wa haraka wa madrasa
+            {updatedAt && (
+              <span className="ml-2 text-xs">
+                · Sasishwa {updatedAt.toLocaleTimeString("sw-TZ", { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={load}
+          disabled={loading}
+          className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"
+          style={{ borderColor: colors.line, color: colors.primary }}
+        >
+          <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+          Sasisha
+        </button>
       </div>
 
-      {loading && (
-        <div className="flex items-center gap-2 text-sm" style={{ color: colors.stone }}>
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: colors.primary }} />
-          Inapakia...
-        </div>
-      )}
-
       {error && (
-        <div className="mb-6 rounded border px-4 py-3 text-sm" style={{ borderColor: '#fecaca', backgroundColor: '#fef2f2', color: '#b91c1c' }}>
+        <div className="mb-4 rounded-lg border px-4 py-3 text-sm" style={{ borderColor: "#fecaca", backgroundColor: "#fef2f2", color: "#b91c1c" }}>
           {error}
         </div>
       )}
 
-      {stats && (
+      {loading && !stats ? (
+        <div className="flex items-center gap-2 text-sm" style={{ color: colors.stone }}>
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: colors.primary }} />
+          Inapakia…
+        </div>
+      ) : stats ? (
         <>
-          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {statCards.map((item) => {
+          <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {cards.map((item) => {
               const Icon = item.icon;
               return (
-                <Link key={item.label} href={item.href} className="group rounded-xl border bg-white p-5 transition-all hover:shadow-md" style={{ borderColor: colors.line }}>
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className="group rounded-xl border bg-white p-5 transition-shadow hover:shadow-md"
+                  style={{ borderColor: colors.line }}
+                >
                   <div className="mb-3 flex items-center justify-between">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ backgroundColor: colors.soft }}>
                       <Icon size={20} style={{ color: colors.primary }} />
@@ -87,6 +123,28 @@ export default function CommitteeDashboardPage() {
                 </Link>
               );
             })}
+          </div>
+
+          <div className="mb-6">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: colors.primary }}>
+              Vitendo vya haraka
+            </p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {quick.map((q) => {
+                const Icon = q.icon;
+                return (
+                  <Link
+                    key={q.href}
+                    href={q.href}
+                    className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2.5 text-sm font-medium"
+                    style={{ borderColor: colors.line, color: colors.ink }}
+                  >
+                    <Icon size={16} style={{ color: colors.primary }} />
+                    {q.label}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
 
           <div className="rounded-xl border bg-white" style={{ borderColor: colors.line }}>
@@ -103,12 +161,12 @@ export default function CommitteeDashboardPage() {
               <p className="px-5 py-8 text-center text-sm" style={{ color: colors.stone }}>Hakuna matangazo bado.</p>
             ) : (
               <ul>
-                {stats.recent_announcements.map((announcement) => (
-                  <li key={announcement.id} className="border-b px-5 py-4 last:border-b-0" style={{ borderColor: colors.line }}>
-                    <p className="text-sm font-medium" style={{ color: colors.ink }}>{announcement.title}</p>
+                {stats.recent_announcements.map((a) => (
+                  <li key={a.id} className="border-b px-5 py-4 last:border-b-0" style={{ borderColor: colors.line }}>
+                    <p className="text-sm font-medium" style={{ color: colors.ink }}>{a.title}</p>
                     <p className="mt-1 text-xs" style={{ color: colors.stone }}>
-                      {new Date(announcement.created_at).toLocaleDateString('sw-TZ')}
-                      {announcement.target_class_name ? ` · ${announcement.target_class_name}` : ' · Wanafunzi wote'}
+                      {new Date(a.created_at).toLocaleDateString("sw-TZ")}
+                      {a.target_class_name ? ` · ${a.target_class_name}` : " · Wanafunzi wote"}
                     </p>
                   </li>
                 ))}
@@ -116,7 +174,7 @@ export default function CommitteeDashboardPage() {
             )}
           </div>
         </>
-      )}
+      ) : null}
     </div>
   );
 }

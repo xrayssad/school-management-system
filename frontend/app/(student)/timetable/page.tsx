@@ -1,52 +1,68 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Clock } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
-import { Card, Spinner, EmptyState } from "@/components/Card";
+import { Spinner, EmptyState } from "@/components/Card";
 import { api } from "@/lib/api";
 import type { TimetableEntry } from "@/lib/types";
+import { colors } from "@/lib/colors";
 
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+const DAYS = [
+  { en: "Monday", sw: "Jumatatu" },
+  { en: "Tuesday", sw: "Jumanne" },
+  { en: "Wednesday", sw: "Jumatano" },
+  { en: "Thursday", sw: "Alhamisi" },
+  { en: "Friday", sw: "Ijumaa" },
+];
+
+function entryLabel(entry: TimetableEntry) {
+  if (entry.entry_type === "break") return "Mapumziko";
+  if (entry.entry_type === "prayer") return "Sala";
+  if (entry.entry_type === "workshop") return "Warsha";
+  return entry.subject?.name ?? "Kipindi";
+}
 
 export default function TimetablePage() {
   const [entries, setEntries] = useState<TimetableEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api
-      .get<TimetableEntry[]>("/timetable")
-      .then(setEntries)
-      .finally(() => setLoading(false));
+    api.get<TimetableEntry[]>("/timetable").then(setEntries).finally(() => setLoading(false));
   }, []);
 
   if (loading) return <Spinner />;
 
   return (
     <div>
-      <PageHeader title="Weekly timetable" subtitle="Your class schedule for this week" />
+      <PageHeader title="Ratiba ya wiki" subtitle="Vipindi vya darasa lako wiki hii" />
       {entries.length === 0 ? (
-        <EmptyState title="No timetable yet" description="Your teacher hasn't published a schedule for your class." />
+        <EmptyState title="Hakuna ratiba bado" description="Mwalimu bado hajaweka ratiba ya darasa lako." />
       ) : (
-        <div className="grid gap-5 lg:grid-cols-5">
+        <div className="grid gap-4 lg:grid-cols-5">
           {DAYS.map((day) => {
-            const dayEntries = entries.filter((e) => e.day_of_week === day);
+            const dayEntries = entries.filter((e) => e.day_of_week === day.en);
             return (
-              <div key={day}>
-                <h2 className="mb-3 font-serif text-sm font-semibold uppercase tracking-wide text-teal-800">{day}</h2>
-                <div className="space-y-3">
-                  {dayEntries.length === 0 && <p className="text-xs text-ink-400">No lessons</p>}
+              <div key={day.en}>
+                <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide" style={{ color: colors.primary }}>{day.sw}</h2>
+                <div className="space-y-2">
+                  {dayEntries.length === 0 && <p className="text-xs" style={{ color: colors.stone }}>Hakuna vipindi</p>}
                   {dayEntries.map((entry) => (
-                    <Card
+                    <div
                       key={entry.id}
-                      className={entry.entry_type !== "lesson" ? "bg-sage/60" : ""}
+                      className="rounded-xl border p-3"
+                      style={{
+                        borderColor: colors.line,
+                        backgroundColor: entry.entry_type !== "lesson" ? colors.soft : "#fff",
+                      }}
                     >
-                      <p className="text-xs text-ink-400">{entry.start_time} &ndash; {entry.end_time}</p>
-                      <p className="mt-1 font-medium text-ink">
-                        {entry.entry_type === "break" ? "Break" : entry.entry_type === "prayer" ? "Prayer" : entry.entry_type === "workshop" ? "Workshop" : entry.subject?.name}
+                      <p className="flex items-center gap-1 text-xs" style={{ color: colors.stone }}>
+                        <Clock size={11} /> {entry.start_time} – {entry.end_time}
                       </p>
-                      {entry.teacher_name && <p className="mt-0.5 text-xs text-ink-400">{entry.teacher_name}</p>}
-                      {entry.room && <p className="text-xs text-ink-400">{entry.room}</p>}
-                    </Card>
+                      <p className="mt-1 text-sm font-medium" style={{ color: colors.ink }}>{entryLabel(entry)}</p>
+                      {entry.teacher_name && <p className="mt-0.5 text-xs" style={{ color: colors.stone }}>{entry.teacher_name}</p>}
+                      {entry.room && <p className="text-xs" style={{ color: colors.stone }}>{entry.room}</p>}
+                    </div>
                   ))}
                 </div>
               </div>

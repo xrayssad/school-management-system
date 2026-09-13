@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { MessageSquare } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
-import { Card, Spinner, EmptyState } from "@/components/Card";
+import { Spinner, EmptyState } from "@/components/Card";
 import { api, ApiError } from "@/lib/api";
 import type { User } from "@/lib/types";
+import { colors } from "@/lib/colors";
 
 export default function TeachersPage() {
   const [teachers, setTeachers] = useState<User[]>([]);
@@ -14,20 +16,21 @@ export default function TeachersPage() {
   const [status, setStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    api
-      .get<User[]>("/teachers")
-      .then(setTeachers)
-      .finally(() => setLoading(false));
+    api.get<User[]>("/teachers").then(setTeachers).finally(() => setLoading(false));
   }, []);
 
   async function sendMessage(recipientId: string) {
     try {
-      await api.post("/messages", { recipient_id: recipientId, subject: "Message from student portal", body });
-      setStatus("Message sent!");
+      await api.post("/messages", {
+        recipient_id: recipientId,
+        subject: "Ujumbe kutoka portali ya mwanafunzi",
+        body,
+      });
+      setStatus("Ujumbe umetumwa.");
       setOpenId(null);
       setBody("");
     } catch (err) {
-      setStatus(err instanceof ApiError ? err.message : "Could not send message.");
+      setStatus(err instanceof ApiError ? err.message : "Imeshindikana kutuma.");
     }
   }
 
@@ -35,45 +38,36 @@ export default function TeachersPage() {
 
   return (
     <div>
-      <PageHeader title="Teachers" subtitle="Meet the teaching staff" />
-      {status && <p className="mb-4 rounded-lg bg-sage px-3 py-2 text-sm text-teal-800">{status}</p>}
+      <PageHeader title="Walimu" subtitle="Kutana na walimu wa madrasa" />
+      {status && (
+        <p className="mb-4 rounded-lg px-3 py-2 text-sm" style={{ backgroundColor: colors.soft, color: colors.primary }}>{status}</p>
+      )}
       {teachers.length === 0 ? (
-        <EmptyState title="No teachers found" />
+        <EmptyState title="Hakuna walimu" />
       ) : (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {teachers.map((t) => (
-            <Card key={t.id}>
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-sage font-serif text-base font-semibold text-teal-800">
+            <div key={t.id} className="rounded-xl border bg-white p-4" style={{ borderColor: colors.line }}>
+              <div className="flex h-12 w-12 items-center justify-center rounded-full font-serif text-sm font-semibold text-white" style={{ backgroundColor: colors.primary }}>
                 {t.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
               </div>
-              <h3 className="mt-3 font-serif text-base font-semibold text-ink">{t.full_name}</h3>
-              <p className="text-sm text-ink-400">{t.teacher_profile?.specialization ?? "Madrasa teacher"}</p>
-              <p className="mt-1 text-xs text-gold-700">{t.teacher_profile?.experience_years ?? 0} years experience</p>
-
+              <h3 className="mt-3 font-serif text-base font-semibold" style={{ color: colors.ink }}>{t.full_name}</h3>
+              <p className="text-sm" style={{ color: colors.stone }}>{t.teacher_profile?.specialization ?? "Mwalimu wa madrasa"}</p>
+              <p className="mt-1 text-xs" style={{ color: colors.primary }}>Miaka {t.teacher_profile?.experience_years ?? 0} ya ualimu</p>
               {openId === t.id ? (
                 <div className="mt-3 space-y-2">
-                  <textarea
-                    value={body}
-                    onChange={(e) => setBody(e.target.value)}
-                    rows={3}
-                    className="w-full rounded-lg border border-teal-100 p-2 text-sm focus:border-teal-600 focus:outline-none"
-                    placeholder="Write a message..."
-                  />
+                  <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} className="w-full rounded-lg border p-2 text-sm outline-none" style={{ borderColor: colors.line }} placeholder="Andika ujumbe…" />
                   <div className="flex gap-2">
-                    <button onClick={() => sendMessage(t.id)} className="rounded-full bg-teal-700 px-4 py-1.5 text-xs font-medium text-white hover:bg-teal-800">
-                      Send
-                    </button>
-                    <button onClick={() => setOpenId(null)} className="rounded-full border border-teal-100 px-4 py-1.5 text-xs font-medium text-ink-600">
-                      Cancel
-                    </button>
+                    <button type="button" onClick={() => sendMessage(t.id)} className="rounded-full px-4 py-1.5 text-xs font-medium text-white" style={{ backgroundColor: colors.primary }}>Tuma</button>
+                    <button type="button" onClick={() => setOpenId(null)} className="rounded-full border px-4 py-1.5 text-xs font-medium" style={{ borderColor: colors.line, color: colors.stone }}>Ghairi</button>
                   </div>
                 </div>
               ) : (
-                <button onClick={() => setOpenId(t.id)} className="mt-3 text-sm font-medium text-teal-700 hover:underline">
-                  Send a message
+                <button type="button" onClick={() => setOpenId(t.id)} className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium" style={{ color: colors.primary }}>
+                  <MessageSquare size={14} /> Tuma ujumbe
                 </button>
               )}
-            </Card>
+            </div>
           ))}
         </div>
       )}
