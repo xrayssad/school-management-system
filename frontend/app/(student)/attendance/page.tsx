@@ -1,5 +1,7 @@
 "use client";
 
+import MadrasaLoader from "@/components/MadrasaLoader";
+
 import { useEffect, useState } from "react";
 import PageHeader from "@/components/PageHeader";
 import StatCard from "@/components/StatCard";
@@ -18,7 +20,7 @@ export default function AttendancePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <Spinner />;
+  if (loading) return <MadrasaLoader />;
   if (!summary) return null;
 
   return (

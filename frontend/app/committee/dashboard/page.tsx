@@ -1,5 +1,7 @@
 "use client";
 
+import MadrasaLoader from "@/components/MadrasaLoader";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -49,14 +51,11 @@ export default function CommitteeDashboardPage() {
     ? [
         { label: "Wanafunzi", value: String(stats.total_students), icon: GraduationCap, href: "/committee/students" },
         { label: "Walimu", value: String(stats.total_teachers), icon: Users, href: "/committee/teachers" },
-        { label: "Mapato (mwezi)", value: formatMoney(stats.month_collections), icon: Wallet, href: "/committee/finance" },
-        { label: "Matumizi (mwezi)", value: formatMoney(stats.month_expenses), icon: TrendingDown, href: "/committee/finance" },
       ]
     : [];
 
   const quick = [
     { href: "/committee/announcements", label: "Tangazo", icon: Megaphone },
-    { href: "/committee/finance", label: "Fedha", icon: Wallet },
     { href: "/committee/exams", label: "Mitihani", icon: CalendarClock },
     { href: "/committee/timetable", label: "Ratiba", icon: Calendar },
   ];

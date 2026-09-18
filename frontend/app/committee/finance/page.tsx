@@ -1,4 +1,5 @@
 "use client";
+import MadrasaLoader from "@/components/MadrasaLoader";
 
 import { useEffect, useState, type FormEvent } from "react";
 import { Plus, Wallet, TrendingUp, TrendingDown, PiggyBank } from "lucide-react";
@@ -140,6 +141,7 @@ export default function CommitteeFinancePage() {
 
   const balancePositive = (summary?.balance ?? 0) >= 0;
 
+  if (loading) return <MadrasaLoader />;
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -230,7 +232,7 @@ export default function CommitteeFinancePage() {
       </div>
 
       {loading ? (
-        <p className="text-sm" style={{ color: colors.stone }}>Inapakia…</p>
+        <p className="text-sm" style={{ color: colors.stone }}>…</p>
       ) : (
         <div className="grid gap-4 lg:grid-cols-3">
           <FinanceList title="Mishahara" icon={Wallet} rows={salaries.map((s) => ({ id: s.id, primary: s.teacher_name, secondary: `${formatMoney(s.amount)} · ${s.paid_at}` }))} />

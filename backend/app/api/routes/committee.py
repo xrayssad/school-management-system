@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_role
+from app.api.deps import require_committee,  require_role
 from app.core.security import hash_password as hash_password
 from app.db.session import get_db
 from app.models.user import User, UserRole, StudentProfile, TeacherProfile
@@ -218,10 +218,7 @@ def create_collection(body: CollectionCreate, db: Session = Depends(get_db), _: 
     return CollectionOut(id=row.id, amount=float(row.amount), source=row.source, month=row.month, recorded_at=row.recorded_at)
 
 
-@router.get("/classes", response_model=list[SchoolClassOut])
-def list_classes(db: Session = Depends(get_db), _: User = Depends(require_committee)):
-    rows = db.execute(select(StudentProfile.class_name, func.count()).group_by(StudentProfile.class_name).order_by(StudentProfile.class_name)).all()
-    return [SchoolClassOut(id=name, name=name, student_count=count) for name, count in rows if name]
+# /classes moved to committee_classes.py
 
 
 @router.get("/subjects", response_model=list[SubjectItemOut])

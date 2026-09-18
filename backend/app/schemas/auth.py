@@ -6,7 +6,8 @@ from app.schemas.user import UserOut
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    # Email (walimu/kamati) AU namba ya usajili (wanafunzi)
+    email: str  # field name kept for frontend compat; value may be student_code
     password: str
 
 

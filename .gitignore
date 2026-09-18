@@ -66,3 +66,8 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Uploads (picha, PDF — hazipaswi kuingia git)
+backend/uploads/
+backend/uploads/**
+!backend/uploads/.gitkeep

@@ -17,7 +17,5 @@ def list_students(class_name: str | None = None, db: Session = Depends(get_db)):
     return q.order_by(User.full_name).all()
 
 
-@router.get("/classes", dependencies=[Depends(require_teacher)])
-def list_classes(db: Session = Depends(get_db)):
-    rows = db.query(StudentProfile.class_name).distinct().all()
-    return sorted({r[0] for r in rows})
+# /classes moved to committee_classes.py
+

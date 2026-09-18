@@ -1,73 +1,79 @@
 "use client";
 
+import MadrasaLoader from "@/components/MadrasaLoader";
+
 import { useEffect, useState } from "react";
-import { Clock } from "lucide-react";
-import PageHeader from "@/components/PageHeader";
-import { Spinner, EmptyState } from "@/components/Card";
 import { api } from "@/lib/api";
-import type { TimetableEntry } from "@/lib/types";
 import { colors } from "@/lib/colors";
 
-const DAYS = [
-  { en: "Monday", sw: "Jumatatu" },
-  { en: "Tuesday", sw: "Jumanne" },
-  { en: "Wednesday", sw: "Jumatano" },
-  { en: "Thursday", sw: "Alhamisi" },
-  { en: "Friday", sw: "Ijumaa" },
-];
+type Entry = {
+  id?: string;
+  day_label?: string;
+  day_of_week?: string | number;
+  start_time?: string;
+  end_time?: string;
+  subject_name?: string;
+  teacher_name?: string;
+  class_name?: string;
+  status?: string;
+};
 
-function entryLabel(entry: TimetableEntry) {
-  if (entry.entry_type === "break") return "Mapumziko";
-  if (entry.entry_type === "prayer") return "Sala";
-  if (entry.entry_type === "workshop") return "Warsha";
-  return entry.subject?.name ?? "Kipindi";
-}
-
-export default function TimetablePage() {
-  const [entries, setEntries] = useState<TimetableEntry[]>([]);
+export default function StudentTimetablePage() {
+  const [className, setClassName] = useState<string | null>(null);
+  const [entries, setEntries] = useState<Entry[]>([]);
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get<TimetableEntry[]>("/timetable").then(setEntries).finally(() => setLoading(false));
+    setLoading(true);
+    api
+      .get<{ class_name: string | null; entries: Entry[]; note?: string; error?: string }>(
+        "/student/my-timetable"
+      )
+      .then((d) => {
+        setClassName(d.class_name);
+        setEntries(Array.isArray(d.entries) ? d.entries : []);
+        if (d.error) setError(d.error);
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : "Imeshindikana kupakia ratiba"))
+      .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <Spinner />;
+  if (loading) return <MadrasaLoader />;
 
   return (
     <div>
-      <PageHeader title="Ratiba ya wiki" subtitle="Vipindi vya darasa lako wiki hii" />
-      {entries.length === 0 ? (
-        <EmptyState title="Hakuna ratiba bado" description="Mwalimu bado hajaweka ratiba ya darasa lako." />
+      <h1 className="font-serif text-2xl font-semibold" style={{ color: colors.primary }}>
+        Ratiba
+      </h1>
+      <p className="mt-1 text-sm" style={{ color: colors.stone }}>
+        {className ? `Darasa: ${className}` : "Ratiba ya darasa lako"}
+      </p>
+      {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
+      {loading ? (
+        <p className="mt-6 text-sm" style={{ color: colors.stone }}>Inapakia…</p>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-5">
-          {DAYS.map((day) => {
-            const dayEntries = entries.filter((e) => e.day_of_week === day.en);
-            return (
-              <div key={day.en}>
-                <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide" style={{ color: colors.primary }}>{day.sw}</h2>
-                <div className="space-y-2">
-                  {dayEntries.length === 0 && <p className="text-xs" style={{ color: colors.stone }}>Hakuna vipindi</p>}
-                  {dayEntries.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="rounded-xl border p-3"
-                      style={{
-                        borderColor: colors.line,
-                        backgroundColor: entry.entry_type !== "lesson" ? colors.soft : "#fff",
-                      }}
-                    >
-                      <p className="flex items-center gap-1 text-xs" style={{ color: colors.stone }}>
-                        <Clock size={11} /> {entry.start_time} – {entry.end_time}
-                      </p>
-                      <p className="mt-1 text-sm font-medium" style={{ color: colors.ink }}>{entryLabel(entry)}</p>
-                      {entry.teacher_name && <p className="mt-0.5 text-xs" style={{ color: colors.stone }}>{entry.teacher_name}</p>}
-                      {entry.room && <p className="text-xs" style={{ color: colors.stone }}>{entry.room}</p>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+        <div className="mt-6 space-y-2">
+          {entries.map((e, i) => (
+            <div
+              key={e.id || i}
+              className="rounded-xl border bg-white px-4 py-3 text-sm"
+              style={{ borderColor: colors.line }}
+            >
+              <p className="font-medium" style={{ color: colors.ink }}>
+                {e.subject_name || "Somo"}
+              </p>
+              <p style={{ color: colors.stone }}>
+                {e.day_label || e.day_of_week} · {e.start_time}–{e.end_time}
+                {e.teacher_name ? ` · ${e.teacher_name}` : ""}
+              </p>
+            </div>
+          ))}
+          {!entries.length && !error && (
+            <p className="text-sm" style={{ color: colors.stone }}>
+              Hakuna ratiba kwa darasa lako. Kamati inaweza kuipanga kwenye Ratiba.
+            </p>
+          )}
         </div>
       )}
     </div>

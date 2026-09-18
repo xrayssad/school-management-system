@@ -109,3 +109,38 @@ class CommitteeTimetableEntry(Base):
         nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+
+class RegistrationStatus(str, enum.Enum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+
+
+class RegistrationRequest(Base):
+    """Ombi la usajili wa mwanafunzi — Kamati inaidhinisha na kutoa student_code."""
+    __tablename__ = "registration_requests"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
+    full_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    class_name: Mapped[str] = mapped_column(String(100), nullable=False, default="Darasa la 1")
+    date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
+    guardian_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    guardian_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    photo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    status: Mapped[RegistrationStatus] = mapped_column(
+        Enum(RegistrationStatus, name="registration_status"),
+        default=RegistrationStatus.pending,
+        nullable=False,
+        index=True,
+    )
+    student_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reviewed_by_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)

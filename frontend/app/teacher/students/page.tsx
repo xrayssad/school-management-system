@@ -1,72 +1,68 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import PageHeader from "@/components/PageHeader";
-import { Card, Spinner, EmptyState } from "@/components/Card";
 import { api } from "@/lib/api";
-import type { User } from "@/lib/types";
+import { colors } from "@/lib/colors";
 
 export default function TeacherStudentsPage() {
   const [classes, setClasses] = useState<string[]>([]);
-  const [selected, setSelected] = useState<string>("");
-  const [students, setStudents] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [students, setStudents] = useState<any[]>([]);
+  const [filter, setFilter] = useState("");
+  const [error, setError] = useState("");
+  const [note, setNote] = useState("");
 
   useEffect(() => {
-    api.get<string[]>("/students/classes").then((c) => {
-      setClasses(c);
-      setSelected(c[0] ?? "");
-    });
+    api
+      .get<{ classes: string[]; students: any[]; note?: string }>("/teacher/my-students")
+      .then((d) => {
+        setClasses(d.classes || []);
+        setStudents(d.students || []);
+        setNote(d.note || "");
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : "Imeshindikana"));
   }, []);
 
-  useEffect(() => {
-    if (!selected) return;
-    setLoading(true);
-    api
-      .get<User[]>(`/students?class_name=${encodeURIComponent(selected)}`)
-      .then(setStudents)
-      .finally(() => setLoading(false));
-  }, [selected]);
+  const shown = filter ? students.filter((s) => s.class_name === filter) : students;
 
   return (
     <div>
-      <PageHeader title="Students" subtitle="Browse students by class" />
-
-      <div className="mb-6 flex flex-wrap gap-2">
+      <h1 className="font-serif text-2xl font-semibold" style={{ color: colors.primary }}>Wanafunzi wangu</h1>
+      <p className="mt-1 text-sm" style={{ color: colors.stone }}>
+        Madarasa uliyopangiwa na Kamati pekee
+      </p>
+      {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
+      {note && <p className="mt-3 text-sm" style={{ color: colors.stone }}>{note}</p>}
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button type="button" onClick={() => setFilter("")} className="rounded-lg border px-3 py-1 text-xs" style={{ borderColor: colors.line }}>
+          Yote ({students.length})
+        </button>
         {classes.map((c) => (
-          <button
-            key={c}
-            onClick={() => setSelected(c)}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-              selected === c ? "bg-teal-700 text-white" : "bg-sage text-ink-600 hover:bg-sage-200"
-            }`}
-          >
+          <button key={c} type="button" onClick={() => setFilter(c)} className="rounded-lg border px-3 py-1 text-xs" style={{ borderColor: filter === c ? colors.primary : colors.line, color: colors.primary }}>
             {c}
           </button>
         ))}
       </div>
-
-      {loading ? (
-        <Spinner />
-      ) : students.length === 0 ? (
-        <EmptyState title="No students in this class yet" />
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {students.map((s) => (
-            <Card key={s.id}>
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-sage font-serif text-sm font-semibold text-teal-800">
-                {s.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
-              </div>
-              <h3 className="mt-3 font-serif text-base font-semibold text-ink">{s.full_name}</h3>
-              <p className="text-xs text-ink-400">{s.student_profile?.student_code}</p>
-              {s.student_profile?.guardian_name && (
-                <p className="mt-2 text-xs text-ink-400">Guardian: {s.student_profile.guardian_name}</p>
-              )}
-              {s.student_profile?.guardian_phone && <p className="text-xs text-ink-400">{s.student_profile.guardian_phone}</p>}
-            </Card>
-          ))}
-        </div>
-      )}
+      <div className="mt-4 overflow-x-auto rounded-xl border bg-white" style={{ borderColor: colors.line }}>
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="text-xs" style={{ color: colors.stone }}>
+              <th className="px-3 py-2">Jina</th>
+              <th>Namba</th>
+              <th>Darasa</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((s) => (
+              <tr key={s.profile_id || s.user_id} className="border-t" style={{ borderColor: colors.line }}>
+                <td className="px-3 py-2">{s.full_name}</td>
+                <td>{s.student_code || "—"}</td>
+                <td>{s.class_name}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!shown.length && <p className="p-4 text-xs" style={{ color: colors.stone }}>Hakuna wanafunzi kwa upeo wako.</p>}
+      </div>
     </div>
   );
 }

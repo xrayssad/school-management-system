@@ -160,12 +160,12 @@ export default function LoginPage() {
 
             <form onSubmit={onSubmit} className="mt-8 space-y-4">
               <div>
-                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider" style={{ color: colors.primary }}>Barua pepe</label>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider" style={{ color: colors.primary }}>Namba ya usajili / Barua pepe</label>
                 <div className="book-field">
                   <div className="book-spine" aria-hidden />
                   <div className="book-page">
                     <Mail size={15} className="ico" />
-                    <input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="jina@mfano.co.tz" />
+                    <input type="text" required autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="STU90001 au email ya mwalimu/kamati" />
                   </div>
                   <div className="book-edge" aria-hidden />
                 </div>
@@ -205,6 +205,15 @@ export default function LoginPage() {
                 {!submitting && <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" />}
               </button>
             </form>
+          <p className="mt-3 text-center text-xs" style={{ color: "#4A554F" }}>
+            Wanafunzi: tumia <strong>namba ya usajili</strong> uliyopewa na Kamati.
+            Walimu na Kamati: tumia barua pepe.
+          </p>
+            <p className="mt-3 text-center text-sm">
+              <Link href="/forgot-password" className="font-medium hover:underline" style={{ color: colors.primary }}>
+                Umesahau nenosiri?
+              </Link>
+            </p>
 
             <p className="mt-6 text-center text-xs" style={{ color: colors.stone }}>
               Hauna akaunti?{" "}

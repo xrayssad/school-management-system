@@ -48,11 +48,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function register(payload: Record<string, unknown>) {
-    const res = await api.post<{ access_token: string; user: User }>("/auth/register", payload);
-    setToken(res.access_token);
-    setUser(res.user);
-    return res.user;
+    const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+    const fd = new FormData();
+    const photo = payload.photo;
+    for (const [k, v] of Object.entries(payload)) {
+      if (k === "photo" || v === undefined || v === null || v === "") continue;
+      if (k === "role") continue; // backend haitaji role kwenye Form
+      fd.append(k, String(v));
+    }
+    if (photo instanceof File) {
+      fd.append("photo", photo);
+    }
+    const res = await fetch(`${API}/auth/register`, { method: "POST", body: fd });
+    if (!res.ok) {
+      let detail = res.statusText;
+      try {
+        const body = await res.json();
+        detail = typeof body.detail === "string"
+          ? body.detail
+          : Array.isArray(body.detail)
+            ? body.detail.map((d: any) => d.msg || JSON.stringify(d)).join(", ")
+            : JSON.stringify(body.detail || body);
+      } catch { /* ignore */ }
+      const { ApiError } = await import("./api");
+      throw new ApiError(detail, res.status);
+    }
+    return null as unknown as User;
   }
+
+
 
   function logout() {
     setToken(null);

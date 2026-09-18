@@ -1,167 +1,173 @@
 "use client";
+import MadrasaLoader from "@/components/MadrasaLoader";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Megaphone, Plus, Send, Search } from "lucide-react";
-import { committeeApi } from "@/lib/api";
-import type { CommitteeAnnouncement, SchoolClass } from "@/lib/types";
+import { FormEvent, useEffect, useState } from "react";
+import { Megaphone, Paperclip, Send } from "lucide-react";
 import { colors } from "@/lib/colors";
 
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+
+type Ann = {
+  id: string;
+  title: string;
+  message: string;
+  audience?: string;
+  attachment_url?: string | null;
+  attachment_name?: string | null;
+  attachment_type?: string | null;
+  created_at?: string;
+};
+
 export default function CommitteeAnnouncementsPage() {
-  const [items, setItems] = useState<CommitteeAnnouncement[]>([]);
-  const [classes, setClasses] = useState<SchoolClass[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [items, setItems] = useState<Ann[]>([]);
+  const [title, setTitle] = useState("");
+  const [message, setMessage] = useState("");
+  const [audience, setAudience] = useState("all");
+  const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [targetClassId, setTargetClassId] = useState("");
-  const [q, setQ] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  async function loadData() {
+  function token() {
+    return localStorage.getItem("madrasa_token");
+  }
+
+  async function load() {
     setLoading(true);
     setError("");
     try {
-      const [announcements, classList] = await Promise.all([
-        committeeApi.listAnnouncements(),
-        committeeApi.listClasses(),
-      ]);
-      setItems(announcements);
-      setClasses(classList);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Imeshindikana kupakia matangazo.");
+      const res = await fetch(`${API}/committee/announcements/list`, {
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      if (!res.ok) {
+        // fallback general list
+        const res2 = await fetch(`${API}/announcements`, {
+          headers: { Authorization: `Bearer ${token()}` },
+        });
+        const data = await res2.json();
+        setItems(Array.isArray(data) ? data : data.items || []);
+      } else {
+        const data = await res.json();
+        setItems(Array.isArray(data) ? data : []);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Imeshindikana");
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    loadData();
+    load();
   }, []);
 
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s) return items;
-    return items.filter(
-      (a) =>
-        a.title.toLowerCase().includes(s) ||
-        a.content.toLowerCase().includes(s) ||
-        (a.target_class_name || "").toLowerCase().includes(s)
-    );
-  }, [items, q]);
-
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
-    setSuccess("");
-    setError("");
-    if (!title.trim() || !content.trim()) {
-      setError("Jaza kichwa na maudhui ya tangazo.");
-      return;
-    }
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
     setSaving(true);
+    setError("");
+    setSuccess("");
     try {
-      await committeeApi.createAnnouncement({
-        title: title.trim(),
-        content: content.trim(),
-        target_class_id: targetClassId || null,
+      const fd = new FormData();
+      fd.append("title", title.trim());
+      fd.append("message", message.trim());
+      fd.append("audience", audience);
+      if (file) fd.append("attachment", file);
+      const res = await fetch(`${API}/committee/announcements/with-attachment`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token()}` },
+        body: fd,
       });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(typeof body.detail === "string" ? body.detail : "Imeshindikana kutuma");
+      }
+      setSuccess("Tangazo limetumwa");
       setTitle("");
-      setContent("");
-      setTargetClassId("");
-      setSuccess("Tangazo limetumwa.");
-      await loadData();
+      setMessage("");
+      setFile(null);
+      await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Imeshindikana kutuma tangazo.");
+      setError(err instanceof Error ? err.message : "Imeshindikana");
     } finally {
       setSaving(false);
     }
   }
 
+  function attHref(url?: string | null) {
+    if (!url) return null;
+    return url.startsWith("http") ? url : `http://localhost:8000${url}`;
+  }
+
+  if (loading) return <MadrasaLoader />;
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="font-serif text-2xl font-semibold" style={{ color: colors.primary }}>Matangazo</h1>
-        <p className="mt-1 text-sm" style={{ color: colors.stone }}>Tuma na simamia matangazo kwa wanafunzi</p>
-      </div>
+      <h1 className="font-serif text-2xl font-semibold" style={{ color: colors.primary }}>
+        Matangazo
+      </h1>
+      <p className="mt-1 text-sm" style={{ color: colors.stone }}>
+        Tuma ujumbe kwa wanafunzi / walimu — unaweza kuambatanisha PDF au picha
+      </p>
 
-      {error && (
-        <div className="mb-4 rounded-lg border px-4 py-3 text-sm" style={{ borderColor: "#fecaca", backgroundColor: "#fef2f2", color: "#b91c1c" }}>{error}</div>
-      )}
-      {success && (
-        <div className="mb-4 rounded-lg border px-4 py-3 text-sm" style={{ borderColor: colors.line, backgroundColor: colors.soft, color: colors.primary }}>{success}</div>
-      )}
-
-      <div className="mb-6 rounded-xl border bg-white p-5" style={{ borderColor: colors.line }}>
-        <div className="mb-4 flex items-center gap-2">
-          <Plus size={18} style={{ color: colors.primary }} />
-          <h2 className="text-sm font-semibold" style={{ color: colors.primary }}>Tangazo jipya</h2>
+      <form onSubmit={onSubmit} className="mt-6 space-y-3 rounded-xl border bg-white p-4" style={{ borderColor: colors.line }}>
+        <div>
+          <label className="mb-1 block text-xs font-semibold" style={{ color: colors.primary }}>Kichwa</label>
+          <input required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded-lg border px-3 py-2 text-sm" style={{ borderColor: colors.line }} />
         </div>
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <div>
+          <label className="mb-1 block text-xs font-semibold" style={{ color: colors.primary }}>Ujumbe</label>
+          <textarea required rows={4} value={message} onChange={(e) => setMessage(e.target.value)} className="w-full rounded-lg border px-3 py-2 text-sm" style={{ borderColor: colors.line }} />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs font-semibold" style={{ color: colors.primary }}>Kichwa</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none" style={{ borderColor: colors.line, backgroundColor: colors.soft }} placeholder="Mfano: Kikao cha wazazi" required />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-semibold" style={{ color: colors.primary }}>Maudhui</label>
-            <textarea value={content} onChange={(e) => setContent(e.target.value)} rows={4} className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none" style={{ borderColor: colors.line, backgroundColor: colors.soft }} placeholder="Andika ujumbe…" required />
-            <p className="mt-1 text-[11px]" style={{ color: colors.stone }}>{content.length} herufi</p>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-semibold" style={{ color: colors.primary }}>Lengwa</label>
-            <select value={targetClassId} onChange={(e) => setTargetClassId(e.target.value)} className="w-full rounded-lg border px-3 py-2.5 text-sm" style={{ borderColor: colors.line, backgroundColor: colors.soft }}>
-              <option value="">Wanafunzi wote</option>
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
+            <label className="mb-1 block text-xs font-semibold" style={{ color: colors.primary }}>Hadhir</label>
+            <select value={audience} onChange={(e) => setAudience(e.target.value)} className="w-full rounded-lg border px-3 py-2 text-sm" style={{ borderColor: colors.line }}>
+              <option value="all">Wote (wanafunzi + walimu)</option>
+              <option value="students">Wanafunzi tu</option>
+              <option value="teachers">Walimu tu</option>
             </select>
           </div>
-          <button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60" style={{ backgroundColor: colors.primary }}>
-            <Send size={16} />
-            {saving ? "Inatuma…" : "Tuma tangazo"}
-          </button>
-        </form>
-      </div>
-
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[200px] flex-1">
-          <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" style={{ color: colors.stone }} />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Tafuta tangazo…"
-            className="w-full rounded-lg border py-2 pl-9 pr-3 text-sm outline-none"
-            style={{ borderColor: colors.line }}
-          />
+          <div>
+            <label className="mb-1 block text-xs font-semibold" style={{ color: colors.primary }}>Kiambatisho (PDF / picha)</label>
+            <input type="file" accept=".pdf,image/png,image/jpeg,image/webp" onChange={(e) => setFile(e.target.files?.[0] || null)} className="block w-full text-sm" />
+          </div>
         </div>
-        <span className="text-xs" style={{ color: colors.stone }}>{filtered.length} kati ya {items.length}</span>
-      </div>
+        {error && <p className="text-sm text-red-700">{error}</p>}
+        {success && <p className="text-sm" style={{ color: colors.primary }}>{success}</p>}
+        <button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" style={{ backgroundColor: colors.primary }}>
+          <Send size={14} /> {saving ? "Inatuma…" : "Tuma tangazo"}
+        </button>
+      </form>
 
-      <div className="rounded-xl border bg-white" style={{ borderColor: colors.line }}>
-        <div className="flex items-center gap-2 border-b px-5 py-3" style={{ borderColor: colors.line }}>
-          <Megaphone size={18} style={{ color: colors.primary }} />
-          <h2 className="text-sm font-semibold" style={{ color: colors.primary }}>Yaliyotumwa</h2>
-        </div>
-        {loading ? (
-          <p className="px-5 py-8 text-center text-sm" style={{ color: colors.stone }}>Inapakia…</p>
-        ) : filtered.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm" style={{ color: colors.stone }}>Hakuna matangazo.</p>
-        ) : (
-          <ul>
-            {filtered.map((a) => (
-              <li key={a.id} className="border-b px-5 py-4 last:border-b-0" style={{ borderColor: colors.line }}>
-                <p className="text-sm font-medium" style={{ color: colors.ink }}>{a.title}</p>
-                <p className="mt-1 text-sm leading-relaxed" style={{ color: colors.stone }}>{a.content}</p>
-                <div className="mt-2 flex flex-wrap gap-2 text-xs" style={{ color: colors.stone }}>
-                  <span>{new Date(a.created_at).toLocaleString("sw-TZ")}</span>
-                  <span>·</span>
-                  <span>{a.target_class_name || "Wanafunzi wote"}</span>
-                  <span>·</span>
-                  <span>Waliofikiwa: {a.reach_count}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+      <div className="mt-8 space-y-3">
+        {loading && <p className="text-sm" style={{ color: colors.stone }}>…</p>}
+        {items.map((a) => (
+          <article key={a.id} className="rounded-xl border bg-white p-4" style={{ borderColor: colors.line }}>
+            <div className="flex items-start gap-2">
+              <Megaphone size={16} style={{ color: colors.primary }} />
+              <div className="min-w-0 flex-1">
+                <h3 className="font-semibold" style={{ color: colors.ink }}>{a.title}</h3>
+                <p className="mt-1 whitespace-pre-wrap text-sm" style={{ color: colors.stone }}>{a.message}</p>
+                {a.attachment_url && (
+                  <a
+                    href={attHref(a.attachment_url) || "#"}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-flex items-center gap-1 text-sm font-medium underline"
+                    style={{ color: colors.primary }}
+                  >
+                    <Paperclip size={14} />
+                    {a.attachment_name || "Kiambatisho"}
+                  </a>
+                )}
+                <p className="mt-2 text-xs" style={{ color: colors.stone }}>
+                  {a.audience || "all"}
+                  {a.created_at ? ` · ${new Date(a.created_at).toLocaleString("sw-TZ")}` : ""}
+                </p>
+              </div>
+            </div>
+          </article>
+        ))}
       </div>
     </div>
   );

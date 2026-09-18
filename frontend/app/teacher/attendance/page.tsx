@@ -1,5 +1,7 @@
 "use client";
 
+import MadrasaLoader from "@/components/MadrasaLoader";
+
 import { useEffect, useState } from "react";
 import { Check, Clock, X, Shield } from "lucide-react";
 import PageHeader from "@/components/PageHeader";

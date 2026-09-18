@@ -19,6 +19,20 @@ class Settings(BaseSettings):
 
     FRONTEND_ORIGINS: str = "http://localhost:3000"
 
+    # Optional email (Gmail app password / any SMTP)
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = ""
+
+    # Optional WhatsApp via CallMeBot-style URL
+    # Example: https://api.callmebot.com/whatsapp.php?phone={phone}&text={text}&apikey=YOUR_KEY
+    WHATSAPP_API_URL: str = ""
+
+    PUBLIC_BASE_URL: str = "http://localhost:8000"
+    FRONTEND_URL: str = "http://localhost:3000"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property

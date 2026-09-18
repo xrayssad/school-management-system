@@ -1,5 +1,7 @@
 "use client";
 
+import MadrasaLoader from "@/components/MadrasaLoader";
+
 import { useEffect, useState } from "react";
 import { ClipboardList } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -38,7 +40,7 @@ export default function AssignmentsPage() {
     }
   }
 
-  if (loading) return <Spinner />;
+  if (loading) return <MadrasaLoader />;
 
   return (
     <div>

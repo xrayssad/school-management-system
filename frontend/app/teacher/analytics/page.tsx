@@ -1,5 +1,7 @@
 "use client";
 
+import MadrasaLoader from "@/components/MadrasaLoader";
+
 import { useEffect, useState } from "react";
 import PageHeader from "@/components/PageHeader";
 import { Card, Spinner } from "@/components/Card";
@@ -35,7 +37,7 @@ export default function AnalyticsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <Spinner />;
+  if (loading) return <MadrasaLoader />;
   if (!data) return null;
 
   const attendanceData = Object.entries(data.attendance_by_class).map(([name, value]) => ({ name, value }));

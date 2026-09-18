@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
 
@@ -18,9 +19,12 @@ class AnnouncementOut(BaseModel):
     teacher_name: str | None = None
     subject_id: str | None = None
     class_name: str | None = None
-    priority: str
-    created_at: datetime
-
+    priority: str = "normal"
+    attachment_url: str | None = None
+    attachment_name: str | None = None
+    attachment_type: str | None = None
+    audience: str | None = None
+    created_at: datetime | None = None
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -42,7 +46,6 @@ class EventOut(BaseModel):
     category: str
     image_url: str | None = None
     created_at: datetime
-
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -62,5 +65,4 @@ class MessageOut(BaseModel):
     body: str
     is_read: bool
     sent_at: datetime
-
     model_config = ConfigDict(from_attributes=True)

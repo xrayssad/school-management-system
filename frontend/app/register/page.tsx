@@ -1,5 +1,7 @@
 "use client";
 
+import { allClasses, CLASS_ORDER } from "@/lib/classes";
+
 import { useState, FormEvent, ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -23,7 +25,7 @@ import { ApiError } from "@/lib/api";
 import { colors } from "@/lib/colors";
 import Slideshow, { type Slide } from "@/components/Slideshow";
 
-const CLASS_OPTIONS = ["Darasa la 1", "Darasa la 2", "Darasa la 3", "Darasa la 4", "Darasa la 5"];
+const CLASS_OPTIONS = [...CLASS_ORDER];
 
 const REGISTER_SLIDES: Slide[] = [
   { src: "/images/pici1.jpg", alt: "Wanafunzi", caption: "Masomo ya kila siku ya Qurani na Tajwid" },
@@ -119,6 +121,8 @@ export default function RegisterPage() {
   const [guardianName, setGuardianName] = useState("");
   const [guardianPhone, setGuardianPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function onSubmit(e: FormEvent) {
@@ -133,20 +137,23 @@ export default function RegisterPage() {
       return;
     }
     setSubmitting(true);
+    setSuccess(null);
     try {
       await register({
         email: email.trim(),
         password,
         full_name: fullName.trim(),
-        role: "student",
         phone: phone || undefined,
         class_name: className,
         guardian_name: guardianName || undefined,
         guardian_phone: guardianPhone || undefined,
+        photo: photo || undefined,
       });
-      router.push("/dashboard");
+      setSuccess(
+        "Ombi limetumwa kwa Kamati. Baada ya kuidhinishwa utaweza kuingia kwa barua pepe na nenosiri ulivyoweka."
+      );
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Imeshindikana kufungua akaunti. Jaribu tena.");
+      setError(err instanceof Error ? err.message : "Imeshindikana kutuma ombi. Jaribu tena.");
     } finally {
       setSubmitting(false);
     }
@@ -244,7 +251,25 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {error && (
+            {success && (
+            <p className="rounded-lg px-3 py-2 text-sm" style={{ backgroundColor: colors.soft, color: colors.primary }}>
+              {success}
+            </p>
+          )}
+          
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider" style={{ color: colors.primary }}>
+                  Picha (hiari)
+                </label>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(e) => setPhoto(e.target.files?.[0] || null)}
+                  className="block w-full text-sm"
+                />
+              </div>
+
+          {error && (
               <div className="flex gap-2 rounded-lg border px-3 py-2.5 text-xs" style={{ borderColor: "#FCA5A5", backgroundColor: "#FEF2F2", color: "#991B1B" }}>
                 <AlertCircle size={14} className="shrink-0" />
                 {error}

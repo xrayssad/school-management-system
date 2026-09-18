@@ -1,5 +1,7 @@
 "use client";
 
+import MadrasaLoader from "@/components/MadrasaLoader";
+
 import { useEffect, useState } from "react";
 import { MapPin } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -16,7 +18,7 @@ export default function EventsPage() {
     api.get<SchoolEvent[]>("/events").then(setEvents).finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <Spinner />;
+  if (loading) return <MadrasaLoader />;
 
   return (
     <div>

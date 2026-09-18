@@ -1,5 +1,7 @@
 "use client";
 
+import MadrasaLoader from "@/components/MadrasaLoader";
+
 import { useEffect, useState, FormEvent } from "react";
 import PageHeader from "@/components/PageHeader";
 import { Card, Spinner, EmptyState } from "@/components/Card";

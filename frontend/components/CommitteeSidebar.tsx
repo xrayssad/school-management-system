@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  BookOpen,
   LayoutDashboard,
+  UserPlus,
+  KeyRound,
   Megaphone,
   Users,
   Wallet,
@@ -11,17 +14,26 @@ import {
   CalendarClock,
   Calendar,
   LogOut,
+  FileText
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { colors } from "@/lib/colors";
 
 const navItems = [
+  { href: "/committee/library", label: "Maktaba", icon: BookOpen },
+  { href: "/committee/users", label: "Watumiaji", icon: Users },
   { href: "/committee/dashboard", label: "Dashibodi", icon: LayoutDashboard },
+  { href: "/committee/registrations", label: "Usajili", icon: UserPlus },
+  { href: "/committee/password", label: "Nenosiri", icon: KeyRound },
   { href: "/committee/announcements", label: "Matangazo", icon: Megaphone },
   { href: "/committee/teachers", label: "Walimu", icon: Users },
-  { href: "/committee/finance", label: "Fedha", icon: Wallet },
+  // { href: "/committee/finance", label: "Fedha", icon: Wallet },
+  { href: "/committee/fees", label: "Ada", icon: Wallet },
   { href: "/committee/students", label: "Wanafunzi", icon: GraduationCap },
   { href: "/committee/exams", label: "Mitihani", icon: CalendarClock },
+  { href: "/committee/grades", label: "Matokeo", icon: GraduationCap },
+  { href: "/committee/promotion", label: "Kurudishwa", icon: GraduationCap },
+  { href: "/committee/exam-reports", label: "Ripoti mitihani", icon: FileText },
   { href: "/committee/timetable", label: "Ratiba", icon: Calendar },
 ];
 

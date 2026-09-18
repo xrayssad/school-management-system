@@ -1,5 +1,7 @@
 "use client";
 
+import MadrasaLoader from "@/components/MadrasaLoader";
+
 import { useState, FormEvent } from "react";
 import { User, Lock } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -11,6 +13,7 @@ import { colors } from "@/lib/colors";
 export default function ProfilePage() {
   const { user, refreshUser } = useAuth();
   const [fullName, setFullName] = useState(user?.full_name ?? "");
+  const [loading, setLoading] = useState(true);
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [guardianName, setGuardianName] = useState(user?.student_profile?.guardian_name ?? "");
   const [guardianPhone, setGuardianPhone] = useState(user?.student_profile?.guardian_phone ?? "");
@@ -64,6 +67,9 @@ export default function ProfilePage() {
       setPwMsg(err instanceof ApiError ? err.message : "Imeshindikana kubadilisha nenosiri.");
     }
   }
+
+  // loading handled
+  if (loading) return <MadrasaLoader />;
 
   return (
     <div>

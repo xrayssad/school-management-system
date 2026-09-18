@@ -17,6 +17,10 @@ class Announcement(Base):
     subject_id: Mapped[str | None] = mapped_column(ForeignKey("subjects.id", ondelete="SET NULL"), nullable=True)
     class_name: Mapped[str | None] = mapped_column(String(100), nullable=True)  # null = whole school
     priority: Mapped[str] = mapped_column(String(20), default="normal")  # normal, important, urgent
+    attachment_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    attachment_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    attachment_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    audience: Mapped[str | None] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
 
