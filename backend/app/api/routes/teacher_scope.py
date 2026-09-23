@@ -1,3 +1,18 @@
+
+# Column names must never come from user input
+ALLOWED_SQL_IDENT = frozenset({
+    "id", "user_id", "teacher_id", "class_name", "subject_id", "day_of_week",
+    "start_time", "end_time", "status", "full_name", "email",
+})
+ALLOWED_TABLES = frozenset({
+    "committee_timetable_entries", "timetable_entries", "teacher_profiles", "users",
+})
+
+def _ident(name: str) -> str:
+    if name not in ALLOWED_SQL_IDENT and name not in ALLOWED_TABLES:
+        raise ValueError(f"invalid sql ident: {name}")
+    return name
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text, inspect
 from sqlalchemy.orm import Session

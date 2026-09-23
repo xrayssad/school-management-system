@@ -73,7 +73,7 @@ def forgot_password(payload: ForgotPasswordIn, db: Session = Depends(get_db)):
         f"Ombi la kubadilisha nenosiri la akaunti yako ya Madrasa.\n\n"
         f"Bofya kiungo hiki (kinaisha baada ya saa 2):\n{link}\n\n"
         f"Ikiwa hukuomba, puuza ujumbe huu.\n\n"
-        f"— Al Madrasat Habiib El Mustwafaa"
+        f"— Madrasatul Habiib El Mustwafaa El Mustwafaa"
     )
     sent = send_email(user.email, "Badilisha nenosiri — Madrasa", body)
     out = dict(ok)

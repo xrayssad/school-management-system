@@ -1,267 +1,204 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import {
+  BookOpen,
+  GraduationCap,
+  Users,
+  MapPin,
+  Phone,
+  Mail,
+  ArrowRight,
+  ChevronDown,
+} from "lucide-react";
 import PublicNav from "@/components/PublicNav";
+import HeroSlideshow, { SLIDES } from "@/components/HeroSlideshow";
 import { colors } from "@/lib/colors";
-import { BookOpen, GraduationCap, Heart, MapPin, Phone, Mail } from "lucide-react";
 
-const SLIDES = [
+const PROGRAMS = [
   {
-    src: "/images/pici1.jpg",
-    title: "Elimu Bora ya Kiislamu",
-    caption: "Mafunzo ya Qur'an, Tajwid na maadili kwa watoto wa kila umri.",
-  },
-  {
-    src: "/images/pici2.jpg",
-    title: "Walimu Wenye Ujuzi",
-    caption: "Wanazuoni wenye uzoefu wa miaka mingi wa ufundishaji.",
-  },
-  {
-    src: "/images/pici3.jpg",
-    title: "Mazingira Salama",
-    caption: "Mahali salama na tulivu pa kujifunzia kwa watoto wetu.",
-  },
-];
-
-const SERVICES = [
-  {
-    title: "Qur'an na Tajwid",
-    items: ["Kusoma Qur'an kwa usahihi", "Masomo ya Tajwid na mahadhi", "Ufahamu wa maana za aya", "Mazoezi ya usikivu wa Qur'an"],
+    name: "Qur'an & Tajweed",
+    desc: "Usomaji, hifadhi na matamshi sahihi ya Qur'ani Tukufu.",
     icon: BookOpen,
   },
   {
-    title: "Hifdh ya Qur'an",
-    items: ["Kuhifadhi surate mbalimbali", "Mbinu za kukariri kwa urahisi", "Mazoezi ya kudurusu kila siku", "Mifumo ya kukumbuka kwa muda mrefu"],
+    name: "Hadith & Fiqh",
+    desc: "Mafundisho ya Mtume na sheria za maisha ya kila siku.",
     icon: GraduationCap,
   },
   {
-    title: "Masomo ya Dini",
-    items: ["Fiqh na ibada za kila siku", "Hadith za Mtume (SAW)", "Akhlaq na maadili", "Historia ya Kiislamu na lugha ya Kiarabu"],
-    icon: Heart,
+    name: "Arabic & Aqeedah",
+    desc: "Lugha ya Kiarabu na misingi ya imani.",
+    icon: Users,
   },
 ];
 
 export default function HomePage() {
-  const [idx, setIdx] = useState(0);
+  const [slide, setSlide] = useState(0);
 
   useEffect(() => {
-    const t = setInterval(() => setIdx((i) => (i + 1) % SLIDES.length), 5000);
-    return () => clearInterval(t);
+    const id = setInterval(() => setSlide((i) => (i + 1) % SLIDES.length), 7000);
+    return () => clearInterval(id);
   }, []);
 
-  return (
-    <div style={{ backgroundColor: colors.paper, color: colors.ink }}>
-      <PublicNav />
+  const caption = SLIDES[slide]?.caption ?? "";
 
-      {/* Hero */}
-      <section id="home" className="grid border-b lg:grid-cols-2" style={{ backgroundColor: colors.soft, borderColor: colors.line }}>
-        <div className="flex flex-col justify-center px-6 py-12 md:px-12 lg:py-16">
-          <p className="mb-3 font-serif text-xl" style={{ color: colors.primary, fontFamily: "Amiri, serif" }}>
-            بسم الله الرحمن الرحيم
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: colors.paper }}>
+      <section className="relative flex min-h-[100svh] flex-col overflow-hidden">
+        <HeroSlideshow />
+
+        <PublicNav transparent />
+
+        {/* Maneno — LAZIMA z-10 juu ya picha */}
+        <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 pb-24 pt-28 text-center">
+          <p className="mb-5 inline-flex items-center rounded-full border border-white/35 bg-white/20 px-3 py-1 text-[11px] font-medium tracking-wide text-white backdrop-blur-sm">
+            Kigorofani, Zanzibar · Elimu ya Kiislamu
           </p>
-          <h1 className="font-serif text-3xl font-semibold italic leading-snug md:text-4xl" style={{ color: colors.deep }}>
-            Msingi wa dini huanzia kwenye herufi ya kwanza.
+
+          <h1 className="max-w-3xl font-serif text-4xl font-semibold leading-tight text-white drop-shadow-md md:text-5xl lg:text-6xl">
+            Elimu yenye msingi wa Qur&apos;ani.
           </h1>
-          <p className="mt-4 max-w-md text-sm leading-relaxed md:text-base" style={{ color: colors.stone }}>
-            Tunafundisha Qur&apos;an, Tajwid na maadili ya Kiislamu kwa watoto na vijana, kwa mbinu zenye mpangilio na uangalizi wa karibu wa mwalimu.
+
+          <p className="mt-4 max-w-xl text-base leading-relaxed text-white/90 drop-shadow md:text-lg">
+            Madrasatul Habiib El Mustwafaa — mafunzo ya Qur&apos;an, Tajweed na maadili
+            kwa watoto wa kila umri, katika mazingira tulivu.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+
+          {/* Caption ya slide — inabadilika kila 7s */}
+          <p
+            key={slide}
+            className="mt-5 max-w-md text-sm font-medium text-white/95 transition-opacity duration-700 md:text-base"
+            style={{ textShadow: "0 1px 8px rgba(0,0,0,0.45)" }}
+          >
+            {caption}
+          </p>
+
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/register"
-              className="rounded px-6 py-3 text-sm font-semibold text-white"
-              style={{ backgroundColor: colors.primary }}
+              className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold shadow-lg transition hover:bg-white/95"
+              style={{ color: colors.primary }}
             >
-              Jisajili sasa
+              Anza sasa
+              <ArrowRight size={16} />
             </Link>
-            <a
-              href="#about"
-              className="rounded border px-6 py-3 text-sm font-semibold"
-              style={{ borderColor: colors.primary, color: colors.primary }}
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-2 rounded-full border border-white/50 bg-white/15 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/25"
             >
-              Soma zaidi kutuhusu
-            </a>
+              Ingia akaunti
+            </Link>
           </div>
-        </div>
-        <div className="relative min-h-[320px] lg:min-h-[420px]">
-          {SLIDES.map((s, i) => (
-            <div
-              key={s.src}
-              className="absolute inset-0 transition-opacity duration-1000"
-              style={{ opacity: i === idx ? 1 : 0 }}
-            >
-              <Image src={s.src} alt={s.title} fill className="object-cover" sizes="(max-width:1024px) 100vw, 50vw" priority={i === 0} />
-              <div className="absolute inset-x-0 bottom-0 p-5 text-white" style={{ background: "rgba(15,47,40,0.88)" }}>
-                <h3 className="font-serif text-lg font-semibold">{s.title}</h3>
-                <p className="mt-1 max-w-sm text-sm text-white/85">{s.caption}</p>
-              </div>
-            </div>
-          ))}
-          <div className="absolute bottom-5 right-5 z-10 flex gap-2">
+
+          {/* Dots */}
+          <div className="mt-8 flex gap-2">
             {SLIDES.map((_, i) => (
               <button
                 key={i}
                 type="button"
                 aria-label={`Slide ${i + 1}`}
-                onClick={() => setIdx(i)}
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: i === idx ? colors.sage : "rgba(255,255,255,0.45)" }}
+                onClick={() => setSlide(i)}
+                className="h-1.5 rounded-full transition-all"
+                style={{
+                  width: i === slide ? 22 : 8,
+                  backgroundColor: i === slide ? "#fff" : "rgba(255,255,255,0.45)",
+                }}
               />
             ))}
           </div>
         </div>
-      </section>
 
-      {/* About */}
-      <section id="about" className="px-6 py-16 md:py-20">
-        <div className="mx-auto max-w-6xl">
-          <p className="text-sm font-semibold" style={{ color: colors.primary }}>
-            Kuhusu Sisi
-          </p>
-          <h2 className="mt-2 max-w-xl font-serif text-2xl font-semibold md:text-3xl" style={{ color: colors.deep }}>
-            Kituo cha elimu ya Kiislamu kinachozingatia kina na uangalifu
-          </h2>
-          <div className="mt-10 grid gap-10 lg:grid-cols-2">
-            <p
-              className="border-l-[3px] pl-5 font-serif text-lg italic leading-relaxed"
-              style={{ borderColor: colors.sage, color: colors.deep }}
-            >
-              Tunaamini kuwa elimu ya dini ni msingi wa maisha mema, hivyo tunajishughulisha na kuwafundisha watoto na vijana kusoma Qur&apos;an, Tajwid, na maadili kwa mujibu wa mafundisho ya Mtume Muhammad (SAW).
-            </p>
-            <ul className="space-y-0">
-              {[
-                ["Misioni yetu", "Kuwapa wanafunzi msingi imara wa dini na maadili yatakayowaongoza katika maisha ya kila siku."],
-                ["Dira yetu", "Kuwa kituo bora cha elimu ya Kiislamu katika mkoa wetu, kinachowafikia watoto wote bila ubaguzi."],
-                ["Thamani zetu", "Uadilifu, ujitolea, upendo na heshima kwa kila mwanafunzi anayepitia madrasa hii."],
-              ].map(([h, p]) => (
-                <li key={h} className="border-t py-4" style={{ borderColor: colors.line }}>
-                  <h3 className="font-serif text-base font-semibold" style={{ color: colors.primary }}>
-                    {h}
-                  </h3>
-                  <p className="mt-1 text-sm" style={{ color: colors.stone }}>
-                    {p}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </div>
+        <div className="absolute bottom-6 left-0 right-0 z-10 flex justify-center">
+          <a
+            href="#programs"
+            className="inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/10 px-3 py-1.5 text-[10px] font-medium uppercase tracking-widest text-white/90 backdrop-blur-sm"
+          >
+            Scroll
+            <ChevronDown size={12} />
+          </a>
         </div>
       </section>
 
-      {/* Services */}
-      <section id="services" className="border-y px-6 py-16" style={{ backgroundColor: colors.soft, borderColor: colors.line }}>
-        <div className="mx-auto max-w-6xl">
-          <p className="text-sm font-semibold" style={{ color: colors.primary }}>
-            Huduma Zetu
-          </p>
-          <h2 className="mt-2 max-w-2xl font-serif text-2xl font-semibold md:text-3xl" style={{ color: colors.deep }}>
-            Mafunzo yanayofuata mpangilio, kwa umri wa miaka mitano hadi kumi na minane
-          </h2>
-          <div className="mt-12 grid gap-8 md:grid-cols-3 md:gap-0">
-            {SERVICES.map((s, i) => {
-              const Icon = s.icon;
-              return (
+      <section id="programs" className="mx-auto max-w-6xl px-6 py-20">
+        <p className="text-center text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: colors.stone }}>
+          Programu
+        </p>
+        <h2 className="mt-2 text-center font-serif text-3xl font-semibold" style={{ color: colors.primary }}>
+          Tunachofundisha
+        </h2>
+        <div className="mt-12 grid gap-6 md:grid-cols-3">
+          {PROGRAMS.map((p) => {
+            const Icon = p.icon;
+            return (
+              <div
+                key={p.name}
+                className="rounded-2xl border bg-white p-6 shadow-sm"
+                style={{ borderColor: colors.line }}
+              >
                 <div
-                  key={s.title}
-                  className={`md:px-8 ${i > 0 ? "md:border-l" : ""}`}
-                  style={{ borderColor: colors.line }}
+                  className="flex h-11 w-11 items-center justify-center rounded-xl"
+                  style={{ backgroundColor: colors.soft }}
                 >
-                  <Icon size={22} style={{ color: colors.primary }} strokeWidth={1.75} />
-                  <h3 className="mt-3 font-serif text-lg font-semibold" style={{ color: colors.primary }}>
-                    {s.title}
-                  </h3>
-                  <ul className="mt-4">
-                    {s.items.map((item, j) => (
-                      <li
-                        key={item}
-                        className={`py-2 text-sm ${j > 0 ? "border-t" : ""}`}
-                        style={{ borderColor: colors.line, color: colors.stone }}
-                      >
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
+                  <Icon size={20} style={{ color: colors.primary }} />
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA strip */}
-      <section className="px-6 py-12 text-center" style={{ backgroundColor: colors.paper }}>
-        <p className="font-serif text-xl font-semibold" style={{ color: colors.deep }}>
-          Karibu ujisajili — ombi litakaguliwa na Kamati
-        </p>
-        <p className="mx-auto mt-2 max-w-lg text-sm" style={{ color: colors.stone }}>
-          Baada ya kuidhinishwa utapata namba ya usajili na uweze kuingia kwenye portal ya mwanafunzi.
-        </p>
-        <div className="mt-6 flex justify-center gap-3">
-          <Link href="/register" className="rounded px-6 py-3 text-sm font-semibold text-white" style={{ backgroundColor: colors.primary }}>
-            Jisajili
-          </Link>
-          <Link href="/login" className="rounded border px-6 py-3 text-sm font-semibold" style={{ borderColor: colors.primary, color: colors.primary }}>
-            Ingia
-          </Link>
-        </div>
-      </section>
-
-      {/* Contact */}
-      <section id="contact" className="px-6 py-16 text-white" style={{ backgroundColor: colors.primary }}>
-        <div className="mx-auto max-w-6xl">
-          <p className="text-sm font-semibold" style={{ color: colors.sage }}>
-            Mawasiliano
-          </p>
-          <h2 className="mt-2 font-serif text-2xl font-semibold text-white">
-            Wasiliana nasi kwa maswali au usajili
-          </h2>
-          <div className="mt-10 grid gap-8 md:grid-cols-3">
-            {[
-              { icon: Phone, title: "Simu", lines: ["+255 776 475 792", "+255 652 929 146"] },
-              { icon: Mail, title: "Barua pepe", lines: ["habibielmustwafa@gmail.com"] },
-              { icon: MapPin, title: "Eneo", lines: ["Kigorofani, Mbuyu Mnene", "Mombasa, Zanzibar"] },
-            ].map(({ icon: Icon, title, lines }) => (
-              <div key={title} className="border-t border-white/20 pt-5">
-                <Icon size={18} style={{ color: colors.sage }} />
-                <h3 className="mt-3 font-serif text-base font-semibold text-white">{title}</h3>
-                {lines.map((l) => (
-                  <p key={l} className="mt-1 text-sm text-white/80">
-                    {l}
-                  </p>
-                ))}
+                <h3 className="mt-4 font-serif text-lg font-semibold" style={{ color: colors.primary }}>
+                  {p.name}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed" style={{ color: colors.stone }}>
+                  {p.desc}
+                </p>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       </section>
 
-      <footer className="px-6 py-12 text-white/85" style={{ backgroundColor: colors.deep }}>
-        <div className="mx-auto grid max-w-6xl gap-8 border-b border-white/10 pb-8 md:grid-cols-[1.4fr_1fr]">
+      <section
+        id="about"
+        className="border-y py-16"
+        style={{ borderColor: colors.line, backgroundColor: colors.soft }}
+      >
+        <div className="mx-auto max-w-3xl px-6 text-center">
+          <h2 className="font-serif text-2xl font-semibold md:text-3xl" style={{ color: colors.primary }}>
+            Kuhusu madrasa
+          </h2>
+          <p className="mt-4 text-sm leading-relaxed md:text-base" style={{ color: colors.stone }}>
+            Tunajenga kizazi chenye maarifa ya dini, adabu na uelewa wa Qur&apos;ani —
+            kwa ufuatiliaji wa karibu wa Kamati, walimu na wazazi.
+          </p>
+        </div>
+      </section>
+
+      <footer id="contact" className="px-6 py-14" style={{ backgroundColor: colors.primary }}>
+        <div className="mx-auto grid max-w-6xl gap-10 text-white md:grid-cols-3">
           <div>
-            <Image
-              src="/images/logo2.jpg"
-              alt="Nembo"
-              width={56}
-              height={56}
-              className="rounded-full border-2 object-cover"
-              style={{ borderColor: colors.sage, width: 56, height: "auto" }}
-            />
-            <p className="mt-3 max-w-sm text-sm text-white/70">
-              Kituo cha elimu ya Kiislamu kilichojikita katika mafunzo ya Qur&apos;an, Tajwid na maadili kwa watoto wa kila umri.
+            <p className="font-serif text-lg font-semibold">Madrasatul Habiib El Mustwafaa</p>
+            <p className="mt-2 text-sm text-white/70">Kigorofani, Zanzibar</p>
+          </div>
+          <div className="space-y-2 text-sm text-white/80">
+            <p className="flex items-center gap-2">
+              <MapPin size={14} /> Kigorofani, Mbuyu Mnene
+            </p>
+            <p className="flex items-center gap-2">
+              <Phone size={14} /> +255 776 475 792
+            </p>
+            <p className="flex items-center gap-2">
+              <Mail size={14} /> habibielmustwafa@gmail.com
             </p>
           </div>
-          <div>
-            <h4 className="font-serif text-base font-semibold text-white">Mawasiliano</h4>
-            <ul className="mt-3 space-y-2 text-sm text-white/75">
-              <li>Kigorofani, Mbuyu Mnene, Mombasa Zanzibar</li>
-              <li>+255 776 475 792</li>
-              <li>habibielmustwafa@gmail.com</li>
-            </ul>
+          <div className="flex flex-col gap-2 text-sm">
+            <Link href="/register" className="text-white/90 underline-offset-2 hover:underline">
+              Jisajili
+            </Link>
+            <Link href="/login" className="text-white/90 underline-offset-2 hover:underline">
+              Ingia
+            </Link>
           </div>
         </div>
-        <p className="mx-auto mt-6 max-w-6xl text-center text-xs text-white/50">
-          © {new Date().getFullYear()} Madrasa Habib el Mustwafa. Haki zote zimehifadhiwa.
+        <p className="mx-auto mt-10 max-w-6xl text-center text-xs text-white/50">
+          © {new Date().getFullYear()} Madrasatul Habiib El Mustwafaa. Haki zote zimehifadhiwa.
         </p>
       </footer>
     </div>

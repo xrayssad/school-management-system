@@ -6,6 +6,7 @@ import {
   BookOpen,
   LayoutDashboard,
   UserPlus,
+  UserCircle,
   KeyRound,
   Megaphone,
   Users,
@@ -20,6 +21,8 @@ import { useAuth } from "@/lib/auth-context";
 import { colors } from "@/lib/colors";
 
 const navItems = [
+  { href: "/committee/profile", label: "Wasifu", icon: UserCircle },
+  { href: "/committee/subjects", label: "Masomo", icon: BookOpen },
   { href: "/committee/library", label: "Maktaba", icon: BookOpen },
   { href: "/committee/users", label: "Watumiaji", icon: Users },
   { href: "/committee/dashboard", label: "Dashibodi", icon: LayoutDashboard },

@@ -21,16 +21,6 @@ import { ApiError } from "@/lib/api";
 import { colors } from "@/lib/colors";
 import Slideshow, { type Slide } from "@/components/Slideshow";
 
-const PORTAL_USERS = [
-  { role: "Mwalimu", email: "ahmed.ali@madrasa.sc.tz", password: "Teacher@123", icon: Users },
-  {
-    role: "Mwanafunzi",
-    email: "ahmed.mohammed@student.madrasa.sc.tz",
-    password: "Student@123",
-    icon: GraduationCap,
-  },
-];
-
 const LOGIN_SLIDES: Slide[] = [
   { src: "/images/pici1.jpg", alt: "Wanafunzi", caption: "Karibu tena — endelea na safari yako" },
   { src: "/images/q1.jpg", alt: "Qurani", caption: "Qurani ndio msingi wa kila somo" },
@@ -156,16 +146,17 @@ export default function LoginPage() {
             </Link>
 
             <h1 className="font-serif text-3xl font-semibold" style={{ color: colors.primary }}>Karibu tena</h1>
-            <p className="mt-1.5 text-sm" style={{ color: colors.stone }}>Ingia kwenye portali ya madrasa.</p>
+          
+            
 
             <form onSubmit={onSubmit} className="mt-8 space-y-4">
               <div>
-                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider" style={{ color: colors.primary }}>Namba ya usajili / Barua pepe</label>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider" style={{ color: colors.primary }}>Namba ya usajili au barua pepe</label>
                 <div className="book-field">
                   <div className="book-spine" aria-hidden />
                   <div className="book-page">
                     <Mail size={15} className="ico" />
-                    <input type="text" required autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="STU90001 au email ya mwalimu/kamati" />
+                    <input type="text" required autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Namba ya usajili au email" />
                   </div>
                   <div className="book-edge" aria-hidden />
                 </div>
@@ -183,7 +174,7 @@ export default function LoginPage() {
                       autoComplete="current-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Andika nenosiri…"
+                      placeholder="Namba ya usajili au email"
                     />
                     <button type="button" className="book-toggle" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Ficha" : "Onyesha"}>
                       {showPassword ? <EyeOff size={14} style={{ color: colors.stone }} /> : <Eye size={14} style={{ color: colors.stone }} />}
@@ -205,10 +196,7 @@ export default function LoginPage() {
                 {!submitting && <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" />}
               </button>
             </form>
-          <p className="mt-3 text-center text-xs" style={{ color: "#4A554F" }}>
-            Wanafunzi: tumia <strong>namba ya usajili</strong> uliyopewa na Kamati.
-            Walimu na Kamati: tumia barua pepe.
-          </p>
+          
             <p className="mt-3 text-center text-sm">
               <Link href="/forgot-password" className="font-medium hover:underline" style={{ color: colors.primary }}>
                 Umesahau nenosiri?
@@ -223,23 +211,9 @@ export default function LoginPage() {
             <div className="mt-8 rounded-xl border p-3" style={{ borderColor: colors.line, backgroundColor: colors.soft }}>
               <div className="mb-2 flex items-center gap-2">
                 <ShieldCheck size={13} style={{ color: colors.primary }} />
-                <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: colors.primary }}>Majaribio</span>
               </div>
               <div className="grid gap-1.5">
-                {PORTAL_USERS.map((u) => {
-                  const Icon = u.icon;
-                  const on = activeDemo === u.role;
-                  return (
-                    <button key={u.role} type="button" onClick={() => { setEmail(u.email); setPassword(u.password); setActiveDemo(u.role); setError(null); }} className="flex items-center gap-3 rounded-lg border bg-white px-3 py-2 text-left" style={{ borderColor: on ? colors.primary : colors.line }}>
-                      <Icon size={16} style={{ color: colors.primary }} />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold" style={{ color: colors.ink }}>{u.role}</p>
-                        <p className="truncate text-[10px]" style={{ color: colors.stone }}>{u.email}</p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+                </div>
             </div>
           </div>
         </div>

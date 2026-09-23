@@ -1,5 +1,6 @@
 from pathlib import Path
 from fastapi import FastAPI
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -19,6 +20,7 @@ uploads_dir = Path("uploads")
 uploads_dir.mkdir(exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
+app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -26,6 +28,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from app.core.rate_limit import limiter
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 
 
 @app.on_event("startup")
@@ -116,3 +126,39 @@ app.include_router(student_fees_view_router, prefix=api_prefix)
 
 from app.api.routes.committee_fees import router as committee_fees_router
 app.include_router(committee_fees_router, prefix=api_prefix)
+
+from app.api.routes.committee_students_manual import router as committee_students_manual_router
+app.include_router(committee_students_manual_router, prefix=api_prefix)
+
+from app.api.routes.teacher_manual_grade import router as teacher_manual_grade_router
+app.include_router(teacher_manual_grade_router, prefix=api_prefix)
+
+from app.api.routes.committee_grades_board import router as committee_grades_board_router
+app.include_router(committee_grades_board_router, prefix=api_prefix)
+
+from app.api.routes.teacher_exams_scope import router as teacher_exams_scope_router
+app.include_router(teacher_exams_scope_router, prefix=api_prefix)
+
+from app.api.routes.timetable_views import router as timetable_views_router
+app.include_router(timetable_views_router, prefix=api_prefix)
+
+from app.api.routes.student_teachers_fix import router as student_teachers_fix_router
+app.include_router(student_teachers_fix_router, prefix=api_prefix)
+
+from app.api.routes.student_results import router as student_results_router
+app.include_router(student_results_router, prefix=api_prefix)
+
+from app.api.routes.committee_subjects import router as committee_subjects_router
+app.include_router(committee_subjects_router, prefix=api_prefix)
+
+from app.api.routes.subjects_catalog import router as subjects_catalog_router
+app.include_router(subjects_catalog_router, prefix=api_prefix)
+
+from app.api.routes.student_profile import router as student_profile_router
+app.include_router(student_profile_router, prefix=api_prefix)
+
+from app.api.routes.committee_exam_reports_pdf import router as committee_exam_reports_pdf_router
+app.include_router(committee_exam_reports_pdf_router, prefix=api_prefix)
+
+from app.api.routes.exam_reports_public import router as exam_reports_public_router
+app.include_router(exam_reports_public_router, prefix=api_prefix)

@@ -1,10 +1,9 @@
 "use client";
-import MadrasaLoader from "@/components/MadrasaLoader";
-
-import { allClasses, CLASS_ORDER } from "@/lib/classes";
 
 import { useCallback, useEffect, useState } from "react";
 import { colors } from "@/lib/colors";
+import { allClasses } from "@/lib/classes";
+import MadrasaLoader from "@/components/MadrasaLoader";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
@@ -26,6 +25,7 @@ function mediaUrl(url?: string | null) {
 }
 
 export default function CommitteeStudentsPage() {
+  const classOptions = allClasses();
   const [students, setStudents] = useState<Student[]>([]);
   const [classFilter, setClassFilter] = useState("");
   const [q, setQ] = useState("");
@@ -52,7 +52,6 @@ export default function CommitteeStudentsPage() {
         headers: { Authorization: `Bearer ${token()}` },
       });
       if (!res.ok) {
-        // fallback older endpoint
         const res2 = await fetch(`${API}/students`, {
           headers: { Authorization: `Bearer ${token()}` },
         });
@@ -62,7 +61,7 @@ export default function CommitteeStudentsPage() {
         return;
       }
       const data = await res.json();
-      setStudents(Array.isArray(data) ? data : []);
+      setStudents(Array.isArray(data) ? data : data.students || []);
     } catch (e: any) {
       setError(e.message || "Imeshindikana");
     } finally {
@@ -95,7 +94,9 @@ export default function CommitteeStudentsPage() {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
         const d = body.detail;
-        setUploadErr(typeof d === "string" ? d : JSON.stringify(d || body) || "Imeshindikana");
+        setUploadErr(
+          typeof d === "string" ? d : JSON.stringify(d || body) || "Imeshindikana"
+        );
         return;
       }
       setUploadResult(body);
@@ -108,11 +109,8 @@ export default function CommitteeStudentsPage() {
     }
   }
 
-  const classes = Array.from(
-    new Set(students.map((s) => s.class_name).filter(Boolean) as string[])
-  ).sort();
+  if (loading) return <MadrasaLoader label="Inapakia wanafunzi…" />;
 
-  if (loading) return <MadrasaLoader />;
   return (
     <div>
       <h1 className="font-serif text-2xl font-semibold" style={{ color: colors.primary }}>
@@ -122,7 +120,8 @@ export default function CommitteeStudentsPage() {
         Orodha ya waliosajiliwa · pakia CSV kuongeza wengi
       </p>
 
-      {/* CSV upload */}
+      {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
+
       <div
         className="mt-4 space-y-3 rounded-xl border bg-white p-4"
         style={{ borderColor: colors.line }}
@@ -177,7 +176,6 @@ export default function CommitteeStudentsPage() {
         )}
       </div>
 
-      {/* Filters */}
       <div className="mt-6 flex flex-wrap gap-2">
         <input
           value={q}
@@ -193,14 +191,11 @@ export default function CommitteeStudentsPage() {
           style={{ borderColor: colors.line }}
         >
           <option value="">Madarasa yote</option>
-          {classes.map((c) => (
+          {classOptions.map((c) => (
             <option key={c} value={c}>
               {c}
             </option>
           ))}
-          {!classes.includes("Darasa la 1") && <option value="Darasa la 1">Darasa la 1</option>}
-          {!classes.includes("Darasa la 2") && <option value="Darasa la 2">Darasa la 2</option>}
-          {!classes.includes("Darasa la 3") && <option value="Darasa la 3">Darasa la 3</option>}
         </select>
         <button
           type="button"
@@ -212,27 +207,19 @@ export default function CommitteeStudentsPage() {
         </button>
       </div>
 
-      {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
-      {loading && (
-        <p className="mt-4 text-sm" style={{ color: colors.stone }}>
-          …
-        </p>
-      )}
-
-      {/* Table */}
       <div
         className="mt-4 overflow-x-auto rounded-xl border bg-white"
         style={{ borderColor: colors.line }}
       >
-        <table className="w-full min-w-[640px] text-left text-sm">
+        <table className="w-full min-w-[720px] text-left text-sm">
           <thead>
             <tr className="text-xs" style={{ color: colors.stone }}>
               <th className="px-3 py-2">Picha</th>
-              <th className="px-3 py-2">Jina</th>
-              <th className="px-3 py-2">Namba</th>
-              <th className="px-3 py-2">Darasa</th>
-              <th className="px-3 py-2">Barua / Simu</th>
-              <th className="px-3 py-2">Hali</th>
+              <th>Namba</th>
+              <th>Jina</th>
+              <th>Darasa</th>
+              <th>Mawasiliano</th>
+              <th>Hali</th>
             </tr>
           </thead>
           <tbody>
@@ -243,11 +230,7 @@ export default function CommitteeStudentsPage() {
                   <td className="px-3 py-2">
                     {img ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={img}
-                        alt=""
-                        className="h-9 w-9 rounded-full object-cover"
-                      />
+                      <img src={img} alt="" className="h-9 w-9 rounded-full object-cover" />
                     ) : (
                       <span
                         className="inline-flex h-9 w-9 items-center justify-center rounded-full text-xs font-semibold text-white"
@@ -257,40 +240,32 @@ export default function CommitteeStudentsPage() {
                       </span>
                     )}
                   </td>
-                  <td className="px-3 py-2 font-medium">{s.full_name}</td>
-                  <td className="px-3 py-2" style={{ color: colors.stone }}>
-                    {s.student_code || "—"}
+                  <td className="font-medium">{s.student_code || "—"}</td>
+                  <td>{s.full_name}</td>
+                  <td>{s.class_name || "—"}</td>
+                  <td style={{ color: colors.stone }}>
+                    {[s.email, s.phone].filter(Boolean).join(" · ")}
                   </td>
-                  <td className="px-3 py-2">{s.class_name || "—"}</td>
-                  <td className="px-3 py-2">
-                    <div className="text-xs">{s.email}</div>
-                    <div className="text-xs" style={{ color: colors.stone }}>
-                      {s.phone || ""}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 text-xs">
+                  <td className="text-xs">
                     {s.promotion_status === "repeated"
-                      ? "Kurudishwa"
+                      ? "Amerudishwa"
                       : s.promotion_status === "promoted"
-                        ? "Kupandishwa"
+                        ? "Amepandishwa"
                         : s.is_active === false
-                          ? "Zimwa"
-                          : "Active"}
+                          ? "Si active"
+                          : "—"}
                   </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
-        {!loading && students.length === 0 && (
+        {!students.length && (
           <p className="p-4 text-sm" style={{ color: colors.stone }}>
-            Hakuna wanafunzi. Pakia CSV au idhinisha maombi ya usajili.
+            Hakuna wanafunzi.
           </p>
         )}
       </div>
-      <p className="mt-2 text-xs" style={{ color: colors.stone }}>
-        Jumla: {students.length}
-      </p>
     </div>
   );
 }

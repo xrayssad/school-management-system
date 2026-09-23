@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Al Madrasat Habiib El Mustwafaa - School Management System"
+    PROJECT_NAME: str = "Madrasatul Habiib El Mustwafaa El Mustwafaa - School Management System"
     API_V1_PREFIX: str = "/api"
 
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/postgres"

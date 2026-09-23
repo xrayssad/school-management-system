@@ -1,9 +1,10 @@
+from app.core.rate_limit import limiter
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import Request, APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -24,21 +25,16 @@ UPLOAD_REG = Path("uploads/registrations")
 UPLOAD_REG.mkdir(parents=True, exist_ok=True)
 
 
+
 def _save_photo(file: UploadFile, folder: Path) -> str:
-    ext = Path(file.filename or "photo.jpg").suffix.lower() or ".jpg"
-    if ext not in {".jpg", ".jpeg", ".png", ".webp"}:
-        raise HTTPException(status_code=400, detail="Picha iwe JPG, PNG au WEBP")
-    name = f"{uuid.uuid4().hex}{ext}"
-    dest = folder / name
-    data = file.file.read()
-    if len(data) > 3 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="Picha isizidi 3MB")
-    dest.write_bytes(data)
-    return f"/uploads/{folder.name}/{name}"
+    from app.core.uploads import save_image_upload
+    return save_image_upload(file, folder)
 
 
 @router.post("/register", response_model=RegistrationOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")
 async def register(
+    request: Request,
     full_name: str = Form(...),
     email: str = Form(...),
     password: str = Form(...),
@@ -86,7 +82,10 @@ async def register(
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def login(
+    request: Request,
+    payload: LoginRequest, db: Session = Depends(get_db)):
     identifier = (payload.email or "").strip()
     if not identifier:
         raise HTTPException(status_code=422, detail="Weka namba ya usajili au barua pepe")
@@ -156,7 +155,10 @@ def _send_whatsapp(phone: str, text: str) -> bool:
 
 
 @router.post("/forgot-password")
-def forgot_password(payload: ForgotPasswordIn, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def forgot_password(
+    request: Request,
+    payload: ForgotPasswordIn, db: Session = Depends(get_db)):
     ident = payload.identifier.strip()
     user = None
     sp = db.query(StudentProfile).filter(StudentProfile.student_code == ident.upper()).first()
@@ -181,7 +183,7 @@ def forgot_password(payload: ForgotPasswordIn, db: Session = Depends(get_db)):
     db.commit()
 
     link = f"{settings.FRONTEND_URL}/reset-password?token={token}"
-    body = f"Habari {user.full_name},\n\nBadilisha nenosiri hapa (inaisha baada ya saa 2):\n{link}\n\nAl Madrasat Habiib El Mustwafaa"
+    body = f"Habari {user.full_name},\n\nBadilisha nenosiri hapa (inaisha baada ya saa 2):\n{link}\n\nMadrasatul Habiib El Mustwafaa El Mustwafaa"
 
     sent = False
     if payload.channel == "whatsapp" and user.phone:
@@ -211,3 +213,51 @@ def reset_password(payload: ResetPasswordIn, db: Session = Depends(get_db)):
     row.used = True
     db.commit()
     return {"detail": "Nenosiri limebadilishwa. Unaweza kuingia sasa."}
+
+
+from pydantic import BaseModel
+
+class ChangePasswordIn(BaseModel):
+    current_password: str
+    new_password: str
+
+@router.post("/change-password")
+def change_password(
+    body: ChangePasswordIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not verify_password(body.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Nenosiri la sasa si sahihi")
+    if len(body.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Nenosiri jipya liwe angalau herufi 6")
+    current_user.hashed_password = hash_password(body.new_password)
+    db.add(current_user)
+    db.commit()
+    return {"ok": True, "message": "Nenosiri limebadilishwa"}
+
+
+class UpdateMeIn(BaseModel):
+    full_name: str | None = None
+    phone: str | None = None
+
+@router.patch("/me")
+def update_me(
+    body: UpdateMeIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if body.full_name is not None and body.full_name.strip():
+        current_user.full_name = body.full_name.strip()
+    if body.phone is not None:
+        current_user.phone = body.phone.strip() or None
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "phone": current_user.phone,
+        "role": current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role),
+    }

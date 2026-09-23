@@ -168,7 +168,7 @@ def _rankings(rows: list[dict]) -> dict:
         averages.append({**meta[sid], "average": round(avg, 2), "subjects_count": len(sc)})
 
     # school top 3
-    school_top = sorted(averages, key=lambda x: x["average"], reverse=True)[:3]
+    school_top = sorted(averages, key=lambda x: x["average"], reverse=True)[:1]
 
     # positions per class
     by_class: dict[str, list] = defaultdict(list)
@@ -198,7 +198,7 @@ def _rankings(rows: list[dict]) -> dict:
     return {
         "class_positions": class_positions,
         "best_per_subject": best_per_subject,
-        "school_top3": school_top,
+        "school_top1": school_top,
     }
 
 
@@ -273,7 +273,7 @@ def _build_pdf(title: str, lines: list[list[str]], subtitle: str = "", extra_not
             story.append(Spacer(1, 6))
         except Exception:
             pass
-    story.append(Paragraph("Al Madrasat Habiib El Mustwafaa", title_style))
+    story.append(Paragraph("Madrasatul Habiib El Mustwafaa El Mustwafaa", title_style))
     story.append(Paragraph("Kigorofani, Zanzibar — Portali ya Madrasa", sub_style))
     story.append(Paragraph(title, ParagraphStyle("H", parent=styles["Heading2"], fontSize=12, textColor=rl_colors.HexColor("#0F2F28"))))
     story.append(Paragraph(subtitle or datetime.utcnow().strftime("%Y-%m-%d"), sub_style))
@@ -297,7 +297,7 @@ def _build_pdf(title: str, lines: list[list[str]], subtitle: str = "", extra_not
         story.append(table)
     story.append(Spacer(1, 16))
     story.append(Paragraph(
-        "Hati hii imetolewa na Uongozi wa Kamati ya Al Madrasat Habiib El Mustwafaa. "
+        "Hati hii imetolewa na Uongozi wa Kamati ya Madrasatul Habiib El Mustwafaa El Mustwafaa. "
         "Kwa maswali wasiliana na ofisi ya madrasa.",
         sub_style,
     ))
@@ -446,7 +446,7 @@ def generate_pdf(
                     str(row.average),
                 ])
         else:
-            for i, row in enumerate(rk.get("school_top3") or [], 1):
+            for i, row in enumerate(rk.get("school_top1") or [], 1):
                 lines.append([
                     str(i),
                     row.get("student_name") or "",

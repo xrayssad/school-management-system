@@ -1,584 +1,587 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
-import {
-  FileText,
-  Trophy,
-  Settings2,
-  Download,
-  Plus,
-  Trash2,
-  RefreshCw,
-} from "lucide-react";
-import { api } from "@/lib/api";
+import { useEffect, useMemo, useState } from "react";
+import { Download, Plus, Trash2 } from "lucide-react";
 import { colors } from "@/lib/colors";
+import { allClasses } from "@/lib/classes";
+import MadrasaLoader from "@/components/MadrasaLoader";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 type EvalRow = {
-  id?: string;
   class_name: string;
   registered: number;
-  completed_all: number;
-  missed_some: number;
-  notes?: string | null;
+  sat: number;
+  sat_all: number;
+  sat_partial: number;
+  absent: number;
 };
 
-type BestRow = {
-  id: string;
+type ClassBest = {
+  class_name: string;
+  full_name: string;
+  student_code: string;
+  average: string;
+  letter: string;
+};
+
+type SubjectBest = {
   class_name: string;
   subject_name: string;
-  student_name: string;
-  student_code?: string | null;
-  score?: number | null;
-  notes?: string | null;
+  full_name: string;
+  student_code: string;
+  marks: string;
 };
 
-type TopRow = {
-  id?: string;
-  position: number;
-  student_name: string;
-  student_code?: string | null;
-  class_name: string;
-  average: number;
-};
-
-type ReportFile = {
+type Published = {
   id: string;
   title: string;
   report_type: string;
   term?: string;
   file_url: string;
-  created_at: string;
+  created_at?: string;
 };
 
 export default function ExamReportsPage() {
-  const [term, setTerm] = useState("Muhula 2");
-  const [autoEval, setAutoEval] = useState<any>(null);
-  const [rankData, setRankData] = useState<any>(null);
-  const [promo, setPromo] = useState<any[]>([]);
-  const [rules, setRules] = useState<any[]>([]);
-  const [manualEval, setManualEval] = useState<EvalRow[]>([]);
-  const [manualBest, setManualBest] = useState<BestRow[]>([]);
-  const [manualTop, setManualTop] = useState<TopRow[]>([]);
-  const [files, setFiles] = useState<ReportFile[]>([]);
+  const classes = useMemo(() => allClasses(), []);
+  const [subjects, setSubjects] = useState<string[]>([]);
+  const [term, setTerm] = useState("Muhula 1");
+  const [year, setYear] = useState(String(new Date().getFullYear()));
+  const [narrative, setNarrative] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [published, setPublished] = useState<Published[]>([]);
 
-  // evaluation form
-  const [evClass, setEvClass] = useState("Darasa la 1");
-  const [evReg, setEvReg] = useState("20");
-  const [evDone, setEvDone] = useState("18");
-  const [evMiss, setEvMiss] = useState("2");
-  const [evNotes, setEvNotes] = useState("");
+  const [evalRows, setEvalRows] = useState<EvalRow[]>(() =>
+    classes.map((c) => ({
+      class_name: c,
+      registered: 0,
+      sat: 0,
+      sat_all: 0,
+      sat_partial: 0,
+      absent: 0,
+    }))
+  );
 
-  // best form
-  const [bClass, setBClass] = useState("Darasa la 1");
-  const [bSubject, setBSubject] = useState("Quran");
-  const [bName, setBName] = useState("");
-  const [bCode, setBCode] = useState("");
-  const [bScore, setBScore] = useState("");
-  const [bRankNote, setBRankNote] = useState("Bora #1");
+  const [classBests, setClassBests] = useState<ClassBest[]>(() =>
+    classes.map((c) => ({
+      class_name: c,
+      full_name: "",
+      student_code: "",
+      average: "",
+      letter: "",
+    }))
+  );
 
-  // top form
-  const [tPos, setTPos] = useState("1");
-  const [tName, setTName] = useState("");
-  const [tCode, setTCode] = useState("");
-  const [tClass, setTClass] = useState("Darasa la 1");
-  const [tAvg, setTAvg] = useState("");
+  const [subjectBests, setSubjectBests] = useState<SubjectBest[]>([
+    {
+      class_name: classes[1] || "Darasa la 1",
+      subject_name: "",
+      full_name: "",
+      student_code: "",
+      marks: "",
+    },
+  ]);
 
-  // promotion rule
-  const [ruleClass, setRuleClass] = useState("Darasa la 1");
-  const [minAvg, setMinAvg] = useState("40");
+  function token() {
+    return localStorage.getItem("madrasa_token");
+  }
 
-  async function loadAll() {
-    setError("");
-    try {
-      const q = term ? `?term=${encodeURIComponent(term)}` : "";
-      const [e, r, p, ru, me, mb, mt, f] = await Promise.all([
-        api.get(`/committee/exam-reports/evaluation${q}`).catch(() => null),
-        api.get(`/committee/exam-reports/rankings${q}`).catch(() => null),
-        api.get(`/committee/exam-reports/promotion-preview${q}`).catch(() => ({ items: [] })),
-        api.get(`/committee/exam-reports/promotion-rules`).catch(() => []),
-        api.get(`/committee/exam-reports/manual/evaluation?term=${encodeURIComponent(term)}`).catch(() => []),
-        api.get(`/committee/exam-reports/manual/best?term=${encodeURIComponent(term)}`).catch(() => []),
-        api.get(`/committee/exam-reports/manual/top?term=${encodeURIComponent(term)}`).catch(() => []),
-        api.get(`/committee/exam-reports/files`).catch(() => []),
-      ]);
-      setAutoEval(e);
-      setRankData(r);
-      setPromo((p as any)?.items || []);
-      setRules((ru as any[]) || []);
-      setManualEval((me as EvalRow[]) || []);
-      setManualBest((mb as BestRow[]) || []);
-      setManualTop((mt as TopRow[]) || []);
-      setFiles((f as ReportFile[]) || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Imeshindikana kupakia");
-    }
+  function mediaUrl(url: string) {
+    if (!url) return "";
+    return url.startsWith("http") ? url : `http://localhost:8000${url}`;
   }
 
   useEffect(() => {
-    loadAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [term]);
+    const headers = { Authorization: `Bearer ${token()}` };
 
-  async function genPdf(report_type: "evaluation" | "ranking") {
-    setBusy(true);
-    setSuccess("");
+    (async () => {
+      // Same source as /committee/subjects — no hardcode
+      const paths = [
+        "/committee/subjects",
+        "/subjects",
+        "/committee/subjects/list",
+      ];
+      let names: string[] = [];
+      for (const path of paths) {
+        try {
+          const r = await fetch(`${API}${path}`, { headers });
+          if (!r.ok) continue;
+          const b = await r.json();
+          const arr = Array.isArray(b) ? b : b.subjects || b.items || b.data || [];
+          names = arr
+            .map((s: any) =>
+              typeof s === "string" ? s : s.name || s.subject_name || s.title || ""
+            )
+            .map((s: string) => s.trim())
+            .filter(Boolean);
+          // unique preserve order
+          const seen = new Set<string>();
+          names = names.filter((n) => (seen.has(n) ? false : (seen.add(n), true)));
+          if (names.length) break;
+        } catch {
+          /* next */
+        }
+      }
+      setSubjects(names);
+    })();
+
+    loadPublished();
+  }, []);
+
+  function loadPublished() {
+    fetch(`${API}/exam-reports/published`, {
+      headers: { Authorization: `Bearer ${token()}` },
+    })
+      .then(async (r) => (r.ok ? r.json() : []))
+      .then((rows) => setPublished(Array.isArray(rows) ? rows : []))
+      .catch(() => setPublished([]));
+  }
+
+  async function downloadManualPdf(kind: "evaluation" | "best") {
     setError("");
+    setMsg("");
+    setLoading(true);
     try {
-      const res = await api.post<{ file_url: string; id: string }>("/committee/exam-reports/generate-pdf", {
-        title:
-          report_type === "evaluation"
-            ? `Tathmini ya mitihani — ${term}`
-            : `Nafasi, bora kwa somo na Top 3 — ${term}`,
-        report_type,
-        term,
-        publish_announcement: true,
+      const payload =
+        kind === "evaluation"
+          ? {
+              term,
+              year: Number(year) || new Date().getFullYear(),
+              narrative: narrative || undefined,
+              by_class: evalRows.map((r) => ({
+                class_name: r.class_name,
+                registered: Number(r.registered) || 0,
+                sat: Number(r.sat) || 0,
+                sat_all: Number(r.sat_all) || 0,
+                sat_partial: Number(r.sat_partial) || 0,
+                absent: Number(r.absent) || 0,
+              })),
+            }
+          : {
+              term,
+              year: Number(year) || new Date().getFullYear(),
+              best_per_class: classBests
+                .filter((r) => r.full_name.trim())
+                .map((r) => ({
+                  class_name: r.class_name,
+                  full_name: r.full_name,
+                  student_code: r.student_code || null,
+                  average: r.average ? Number(r.average) : null,
+                  letter: r.letter || null,
+                })),
+              best_per_subject: subjectBests
+                .filter((r) => r.full_name.trim() && r.subject_name.trim())
+                .map((r) => ({
+                  class_name: r.class_name,
+                  subject_name: r.subject_name,
+                  full_name: r.full_name,
+                  student_code: r.student_code || null,
+                  marks: r.marks || null,
+                  note: "Bora #1",
+                  rank: 1,
+                })),
+              school_top1: (() => {
+                const filled = classBests.filter((r) => r.full_name.trim() && r.average);
+                if (!filled.length) return null;
+                return filled.reduce((a, b) =>
+                  Number(a.average) >= Number(b.average) ? a : b
+                );
+              })(),
+            };
+
+      const path =
+        kind === "evaluation"
+          ? "/committee/exam-reports/pdf/evaluation-manual"
+          : "/committee/exam-reports/pdf/best-students-manual";
+
+      const res = await fetch(`${API}${path}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token()}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       });
-      setSuccess(`PDF imetengenezwa: ${res.file_url}`);
-      await loadAll();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "PDF imeshindikana");
+      if (!res.ok) throw new Error((await res.text()).slice(0, 300));
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = kind === "evaluation" ? "tathmini.pdf" : "wanafunzi-bora.pdf";
+      a.click();
+      URL.revokeObjectURL(url);
+      setMsg("PDF imepakuliwa na imehifadhiwa — wanafunzi/walimu wanaweza kuiona kwenye Ripoti.");
+      loadPublished();
+    } catch (e: any) {
+      setError(e.message || "Imeshindikana");
     } finally {
-      setBusy(false);
+      setLoading(false);
     }
   }
-
-  async function saveEval(e: FormEvent) {
-    e.preventDefault();
-    setError("");
-    try {
-      await api.post("/committee/exam-reports/manual/evaluation", {
-        term,
-        class_name: evClass,
-        registered: Number(evReg) || 0,
-        completed_all: Number(evDone) || 0,
-        missed_some: Number(evMiss) || 0,
-        notes: evNotes || null,
-      });
-      setSuccess(`Tathmini ya ${evClass} imehifadhiwa`);
-      await loadAll();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Imeshindikana");
-    }
-  }
-
-  async function saveBest(e: FormEvent) {
-    e.preventDefault();
-    if (!bName.trim()) {
-      setError("Jina la mwanafunzi linahitajika");
-      return;
-    }
-    try {
-      await api.post("/committee/exam-reports/manual/best", {
-        term,
-        class_name: bClass,
-        subject_name: bSubject,
-        student_name: bName.trim(),
-        student_code: bCode || null,
-        score: bScore ? Number(bScore) : null,
-        notes: bRankNote || null,
-      });
-      setSuccess("Mwanafunzi bora ameongezwa");
-      setBName("");
-      setBCode("");
-      setBScore("");
-      await loadAll();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Imeshindikana");
-    }
-  }
-
-  async function deleteBest(id: string) {
-    try {
-      await api.delete(`/committee/exam-reports/manual/best/${id}`);
-      await loadAll();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Imeshindikana kufuta");
-    }
-  }
-
-  async function saveTop(e: FormEvent) {
-    e.preventDefault();
-    try {
-      await api.post("/committee/exam-reports/manual/top", {
-        term,
-        position: Number(tPos) || 1,
-        student_name: tName.trim(),
-        student_code: tCode || null,
-        class_name: tClass,
-        average: Number(tAvg) || 0,
-      });
-      setSuccess(`Top ${tPos} imehifadhiwa`);
-      await loadAll();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Imeshindikana");
-    }
-  }
-
-  async function saveRule(e: FormEvent) {
-    e.preventDefault();
-    try {
-      await api.put("/committee/exam-reports/promotion-rules", {
-        class_name: ruleClass,
-        min_average: Number(minAvg),
-        fail_grade: "D",
-        repeat_on_term2_fail: true,
-      });
-      setSuccess("Sheria imehifadhiwa");
-      await loadAll();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Imeshindikana");
-    }
-  }
-
-  async function downloadFile(f: ReportFile) {
-    const token = localStorage.getItem("madrasa_token");
-    const res = await fetch(`${API}/committee/exam-reports/download/${f.id}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (!res.ok) {
-      // fallback static
-      window.open(
-        f.file_url.startsWith("http") ? f.file_url : `http://localhost:8000${f.file_url}`,
-        "_blank"
-      );
-      return;
-    }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${f.title}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  const inputCls = "rounded-lg border px-3 py-2 text-sm w-full";
-  const labelCls = "mb-1 block text-xs font-semibold";
 
   return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-serif text-2xl font-semibold" style={{ color: colors.primary }}>
             Ripoti za mitihani
           </h1>
           <p className="mt-1 text-sm" style={{ color: colors.stone }}>
-            Tathmini, bora kwa somo (#1 na #2), Top 3, sheria, na PDF
+            Jaza → pakua PDF → inaonekana kwa walimu na wanafunzi
           </p>
         </div>
-        <button
-          type="button"
-          onClick={loadAll}
-          className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"
-          style={{ borderColor: colors.line, color: colors.primary }}
-        >
-          <RefreshCw size={14} /> Sasisha
-        </button>
-      </div>
-
-      <div className="mb-4 flex flex-wrap items-end gap-2">
-        <div>
-          <label className={labelCls} style={{ color: colors.primary }}>
-            Muhula / Term
-          </label>
+        <div className="flex flex-wrap gap-2">
           <input
             value={term}
             onChange={(e) => setTerm(e.target.value)}
-            className={inputCls}
-            style={{ borderColor: colors.line, maxWidth: 200 }}
-            placeholder="Muhula 2"
+            className="rounded-lg border px-3 py-2 text-sm"
+            style={{ borderColor: colors.line }}
+          />
+          <input
+            value={year}
+            onChange={(e) => setYear(e.target.value)}
+            className="w-24 rounded-lg border px-3 py-2 text-sm"
+            style={{ borderColor: colors.line }}
           />
         </div>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => genPdf("evaluation")}
-          className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
-          style={{ backgroundColor: colors.primary }}
-        >
-          <FileText size={14} /> PDF tathmini
-        </button>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => genPdf("ranking")}
-          className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
-          style={{ backgroundColor: colors.primary }}
-        >
-          <Trophy size={14} /> PDF nafasi / bora
-        </button>
       </div>
 
-      {error && (
-        <p className="mb-3 rounded-lg px-3 py-2 text-sm" style={{ backgroundColor: "#fef2f2", color: "#b91c1c" }}>
-          {error}
+      {msg && (
+        <p className="rounded-lg px-3 py-2 text-sm" style={{ backgroundColor: colors.soft, color: colors.primary }}>
+          {msg}
         </p>
       )}
-      {success && (
-        <p className="mb-3 break-all rounded-lg px-3 py-2 text-sm" style={{ backgroundColor: colors.soft, color: colors.primary }}>
-          {success}
-        </p>
+      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {loading && <MadrasaLoader label="Inatengeneza PDF…" />}
+
+      {/* Published gallery */}
+      {published.length > 0 && (
+        <section className="rounded-xl border bg-white p-4" style={{ borderColor: colors.line }}>
+          <h2 className="mb-2 font-serif font-semibold" style={{ color: colors.primary }}>
+            PDF zilizochapishwa
+          </h2>
+          <ul className="space-y-2 text-sm">
+            {published.map((p) => (
+              <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 border-b py-2" style={{ borderColor: colors.line }}>
+                <span>
+                  {p.title}
+                  {p.term ? ` · ${p.term}` : ""}
+                </span>
+                <a
+                  href={mediaUrl(p.file_url)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold underline"
+                  style={{ color: colors.primary }}
+                >
+                  Pakua
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
-      {/* ===== MANUAL EVALUATION ===== */}
-      <section className="mb-6 rounded-xl border bg-white p-4" style={{ borderColor: colors.line }}>
-        <h2 className="text-sm font-semibold" style={{ color: colors.primary }}>
-          1. Tathmini kwa mkono (Waliosajiliwa / Wamekamilisha / Wamekosa baadhi)
-        </h2>
-        <p className="mt-1 text-xs" style={{ color: colors.stone }}>
-          Jaza kwa kila darasa. Data hii inatumika kwenye PDF tathmini (ikiwa ipo, inashinda auto).
-        </p>
-        <form onSubmit={saveEval} className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
-          <div>
-            <label className={labelCls} style={{ color: colors.primary }}>Darasa</label>
-            <input value={evClass} onChange={(e) => setEvClass(e.target.value)} className={inputCls} style={{ borderColor: colors.line }} />
-          </div>
-          <div>
-            <label className={labelCls} style={{ color: colors.primary }}>Waliosajiliwa</label>
-            <input value={evReg} onChange={(e) => setEvReg(e.target.value)} type="number" className={inputCls} style={{ borderColor: colors.line }} />
-          </div>
-          <div>
-            <label className={labelCls} style={{ color: colors.primary }}>Wamekamilisha</label>
-            <input value={evDone} onChange={(e) => setEvDone(e.target.value)} type="number" className={inputCls} style={{ borderColor: colors.line }} />
-          </div>
-          <div>
-            <label className={labelCls} style={{ color: colors.primary }}>Wamekosa baadhi</label>
-            <input value={evMiss} onChange={(e) => setEvMiss(e.target.value)} type="number" className={inputCls} style={{ borderColor: colors.line }} />
-          </div>
-          <div>
-            <label className={labelCls} style={{ color: colors.primary }}>Maelezo</label>
-            <input value={evNotes} onChange={(e) => setEvNotes(e.target.value)} className={inputCls} style={{ borderColor: colors.line }} placeholder="Hiari" />
-          </div>
-          <div className="flex items-end">
-            <button type="submit" className="w-full rounded-lg px-3 py-2 text-sm font-semibold text-white" style={{ backgroundColor: colors.primary }}>
-              Hifadhi
-            </button>
-          </div>
-        </form>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-left text-sm">
+      {/* A. Tathmini — no "wa mwanzo" */}
+      <section className="rounded-xl border bg-white p-4" style={{ borderColor: colors.line }}>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-serif text-lg font-semibold" style={{ color: colors.primary }}>
+            A. Tathmini — idadi ya watahiniwa
+          </h2>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => downloadManualPdf("evaluation")}
+            className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white"
+            style={{ backgroundColor: colors.primary }}
+          >
+            <Download size={16} />
+            Pakua tathmini PDF
+          </button>
+        </div>
+        <textarea
+          value={narrative}
+          onChange={(e) => setNarrative(e.target.value)}
+          rows={2}
+          placeholder="Maelezo mafupi (hiari)"
+          className="mb-3 w-full rounded-lg border px-3 py-2 text-sm"
+          style={{ borderColor: colors.line }}
+        />
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-left text-xs">
             <thead>
-              <tr className="text-xs" style={{ color: colors.stone }}>
-                <th className="py-2">Darasa</th>
-                <th>Waliosajiliwa</th>
-                <th>Wamekamilisha</th>
-                <th>Wamekosa baadhi</th>
-                <th>Maelezo</th>
+              <tr style={{ backgroundColor: colors.soft }}>
+                <th className="px-2 py-2">Darasa</th>
+                <th className="px-2 py-2">Waliosajiliwa</th>
+                <th className="px-2 py-2">Waliofanya</th>
+                <th className="px-2 py-2">Yote</th>
+                <th className="px-2 py-2">Baadhi</th>
+                <th className="px-2 py-2">Hawakufanya</th>
               </tr>
             </thead>
             <tbody>
-              {manualEval.map((c) => (
-                <tr key={c.class_name} className="border-t" style={{ borderColor: colors.line }}>
-                  <td className="py-2 font-medium">{c.class_name}</td>
-                  <td>{c.registered}</td>
-                  <td>{c.completed_all}</td>
-                  <td>{c.missed_some}</td>
-                  <td className="text-xs" style={{ color: colors.stone }}>{c.notes || "—"}</td>
+              {evalRows.map((r, i) => (
+                <tr key={r.class_name} className="border-t" style={{ borderColor: colors.line }}>
+                  <td className="px-2 py-1.5 font-medium">{r.class_name}</td>
+                  {(["registered", "sat", "sat_all", "sat_partial", "absent"] as const).map((k) => (
+                    <td key={k} className="px-1 py-1">
+                      <input
+                        type="number"
+                        min={0}
+                        value={r[k]}
+                        onChange={(e) => {
+                          const v = Number(e.target.value) || 0;
+                          setEvalRows((rows) =>
+                            rows.map((x, j) => (j === i ? { ...x, [k]: v } : x))
+                          );
+                        }}
+                        className="w-16 rounded border px-1 py-1 text-xs"
+                        style={{ borderColor: colors.line }}
+                      />
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
           </table>
-          {!manualEval.length && (
-            <p className="py-3 text-xs" style={{ color: colors.stone }}>
-              Bado hakuna data ya mkono. Auto: {(autoEval?.by_class || []).length} madarasa kutoka grades.
-            </p>
-          )}
         </div>
       </section>
 
-      {/* ===== BEST PER SUBJECT (#1 and #2) ===== */}
-      <section className="mb-6 rounded-xl border bg-white p-4" style={{ borderColor: colors.line }}>
-        <h2 className="text-sm font-semibold" style={{ color: colors.primary }}>
-          2. Mwanafunzi bora kwa somo na darasa (#1, #2, …)
-        </h2>
-        <p className="mt-1 text-xs" style={{ color: colors.stone }}>
-          Ongeza zaidi ya mmoja kwa somo lile lile (mf. Bora #1 na Bora #2). Andika kwenye Maelezo.
-        </p>
-        <form onSubmit={saveBest} className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-7">
+      {/* SEHEMU 1 */}
+      <section className="overflow-hidden rounded-xl border-2 bg-white" style={{ borderColor: colors.primary }}>
+        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3" style={{ backgroundColor: colors.primary }}>
           <div>
-            <label className={labelCls} style={{ color: colors.primary }}>Darasa</label>
-            <input value={bClass} onChange={(e) => setBClass(e.target.value)} className={inputCls} style={{ borderColor: colors.line }} />
+            <h2 className="font-serif text-base font-semibold text-white">SEHEMU 1 — Bora kwa kila darasa</h2>
+            <p className="text-xs text-white/80">#1 pekee · wastani wa masomo yote</p>
           </div>
-          <div>
-            <label className={labelCls} style={{ color: colors.primary }}>Somo</label>
-            <input value={bSubject} onChange={(e) => setBSubject(e.target.value)} className={inputCls} style={{ borderColor: colors.line }} />
-          </div>
-          <div>
-            <label className={labelCls} style={{ color: colors.primary }}>Jina</label>
-            <input value={bName} onChange={(e) => setBName(e.target.value)} className={inputCls} style={{ borderColor: colors.line }} required />
-          </div>
-          <div>
-            <label className={labelCls} style={{ color: colors.primary }}>Namba</label>
-            <input value={bCode} onChange={(e) => setBCode(e.target.value)} className={inputCls} style={{ borderColor: colors.line }} placeholder="STU…" />
-          </div>
-          <div>
-            <label className={labelCls} style={{ color: colors.primary }}>Alama</label>
-            <input value={bScore} onChange={(e) => setBScore(e.target.value)} className={inputCls} style={{ borderColor: colors.line }} />
-          </div>
-          <div>
-            <label className={labelCls} style={{ color: colors.primary }}>Nafasi / note</label>
-            <select value={bRankNote} onChange={(e) => setBRankNote(e.target.value)} className={inputCls} style={{ borderColor: colors.line }}>
-              <option>Bora #1</option>
-              <option>Bora #2</option>
-              <option>Bora #3</option>
-            </select>
-          </div>
-          <div className="flex items-end">
-            <button type="submit" className="inline-flex w-full items-center justify-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold text-white" style={{ backgroundColor: colors.primary }}>
-              <Plus size={14} /> Ongeza
-            </button>
-          </div>
-        </form>
-        <div className="mt-4 max-h-72 overflow-y-auto">
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => downloadManualPdf("best")}
+            className="inline-flex items-center gap-2 rounded-lg bg-white/15 px-3 py-2 text-sm font-semibold text-white"
+          >
+            <Download size={16} />
+            Pakua PDF
+          </button>
+        </div>
+        <div className="overflow-x-auto p-4">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="text-xs" style={{ color: colors.stone }}>
-                <th className="py-2">Darasa</th>
-                <th>Somo</th>
-                <th>Mwanafunzi</th>
-                <th>Namba</th>
-                <th>Alama</th>
-                <th>Note</th>
-                <th />
+              <tr style={{ backgroundColor: colors.soft }}>
+                <th className="px-2 py-2">Darasa</th>
+                <th className="px-2 py-2">Jina</th>
+                <th className="px-2 py-2">Namba</th>
+                <th className="px-2 py-2">Wastani %</th>
+                <th className="px-2 py-2">Daraja</th>
               </tr>
             </thead>
             <tbody>
-              {manualBest.map((b) => (
-                <tr key={b.id} className="border-t" style={{ borderColor: colors.line }}>
-                  <td className="py-2">{b.class_name}</td>
-                  <td>{b.subject_name}</td>
-                  <td className="font-medium">{b.student_name}</td>
-                  <td className="text-xs">{b.student_code || "—"}</td>
-                  <td>{b.score ?? "—"}</td>
-                  <td className="text-xs">{b.notes || "—"}</td>
-                  <td>
-                    <button type="button" onClick={() => deleteBest(b.id)} className="p-1" title="Futa">
-                      <Trash2 size={14} style={{ color: "#b91c1c" }} />
+              {classBests.map((r, i) => (
+                <tr key={r.class_name} className="border-t" style={{ borderColor: colors.line }}>
+                  <td className="px-2 py-1.5 font-medium">{r.class_name}</td>
+                  <td className="px-1 py-1">
+                    <input
+                      value={r.full_name}
+                      onChange={(e) =>
+                        setClassBests((rows) =>
+                          rows.map((x, j) => (j === i ? { ...x, full_name: e.target.value } : x))
+                        )
+                      }
+                      className="w-full min-w-[140px] rounded border px-2 py-1 text-sm"
+                      style={{ borderColor: colors.line }}
+                    />
+                  </td>
+                  <td className="px-1 py-1">
+                    <input
+                      value={r.student_code}
+                      onChange={(e) =>
+                        setClassBests((rows) =>
+                          rows.map((x, j) => (j === i ? { ...x, student_code: e.target.value } : x))
+                        )
+                      }
+                      className="w-24 rounded border px-2 py-1 text-sm"
+                      style={{ borderColor: colors.line }}
+                    />
+                  </td>
+                  <td className="px-1 py-1">
+                    <input
+                      value={r.average}
+                      onChange={(e) =>
+                        setClassBests((rows) =>
+                          rows.map((x, j) => (j === i ? { ...x, average: e.target.value } : x))
+                        )
+                      }
+                      className="w-16 rounded border px-2 py-1 text-sm"
+                      style={{ borderColor: colors.line }}
+                    />
+                  </td>
+                  <td className="px-1 py-1">
+                    <input
+                      value={r.letter}
+                      onChange={(e) =>
+                        setClassBests((rows) =>
+                          rows.map((x, j) => (j === i ? { ...x, letter: e.target.value } : x))
+                        )
+                      }
+                      className="w-12 rounded border px-2 py-1 text-sm"
+                      style={{ borderColor: colors.line }}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* SEHEMU 2 — subject dropdown, top 1 only */}
+      <section className="overflow-hidden rounded-xl border-2 bg-white" style={{ borderColor: "#0F2F28" }}>
+        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3" style={{ backgroundColor: "#0F2F28" }}>
+          <div>
+            <h2 className="font-serif text-base font-semibold text-white">
+              SEHEMU 2 — Bora kwa kila somo (kwa kila darasa)
+            </h2>
+            <p className="text-xs text-white/80">#1 pekee kwa kila somo · chagua somo kwenye orodha</p>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              setSubjectBests((rows) => [
+                ...rows,
+                {
+                  class_name: classes[1] || "Darasa la 1",
+                  subject_name: subjects[0] || "",
+                  full_name: "",
+                  student_code: "",
+                  marks: "",
+                },
+              ])
+            }
+            className="inline-flex items-center gap-1 rounded-lg bg-white/15 px-3 py-2 text-sm font-semibold text-white"
+          >
+            <Plus size={16} />
+            Ongeza mstari
+          </button>
+        </div>
+        <div className="overflow-x-auto p-4">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr style={{ backgroundColor: colors.soft }}>
+                <th className="px-2 py-2">Darasa</th>
+                <th className="px-2 py-2">Somo</th>
+                <th className="px-2 py-2">Jina</th>
+                <th className="px-2 py-2">Namba</th>
+                <th className="px-2 py-2">Alama</th>
+                <th className="px-2 py-2" />
+              </tr>
+            </thead>
+            <tbody>
+              {subjectBests.map((r, i) => (
+                <tr key={i} className="border-t" style={{ borderColor: colors.line }}>
+                  <td className="px-1 py-1">
+                    <select
+                      value={r.class_name}
+                      onChange={(e) =>
+                        setSubjectBests((rows) =>
+                          rows.map((x, j) => (j === i ? { ...x, class_name: e.target.value } : x))
+                        )
+                      }
+                      className="rounded border px-1 py-1 text-xs"
+                      style={{ borderColor: colors.line }}
+                    >
+                      {classes.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-1 py-1">
+                    <select
+                      value={r.subject_name}
+                      onChange={(e) =>
+                        setSubjectBests((rows) =>
+                          rows.map((x, j) => (j === i ? { ...x, subject_name: e.target.value } : x))
+                        )
+                      }
+                      className="rounded border px-1 py-1 text-xs"
+                      style={{ borderColor: colors.line }}
+                    >
+                      <option value="">— Somo —</option>
+                      {subjects.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-1 py-1">
+                    <input
+                      value={r.full_name}
+                      onChange={(e) =>
+                        setSubjectBests((rows) =>
+                          rows.map((x, j) => (j === i ? { ...x, full_name: e.target.value } : x))
+                        )
+                      }
+                      className="min-w-[130px] rounded border px-2 py-1 text-sm"
+                      style={{ borderColor: colors.line }}
+                    />
+                  </td>
+                  <td className="px-1 py-1">
+                    <input
+                      value={r.student_code}
+                      onChange={(e) =>
+                        setSubjectBests((rows) =>
+                          rows.map((x, j) => (j === i ? { ...x, student_code: e.target.value } : x))
+                        )
+                      }
+                      className="w-24 rounded border px-2 py-1 text-sm"
+                      style={{ borderColor: colors.line }}
+                    />
+                  </td>
+                  <td className="px-1 py-1">
+                    <input
+                      value={r.marks}
+                      onChange={(e) =>
+                        setSubjectBests((rows) =>
+                          rows.map((x, j) => (j === i ? { ...x, marks: e.target.value } : x))
+                        )
+                      }
+                      className="w-20 rounded border px-2 py-1 text-sm"
+                      style={{ borderColor: colors.line }}
+                    />
+                  </td>
+                  <td className="px-1 py-1">
+                    <button
+                      type="button"
+                      onClick={() => setSubjectBests((rows) => rows.filter((_, j) => j !== i))}
+                      className="rounded p-1 text-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 size={14} />
                     </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {!manualBest.length && (
-            <p className="py-3 text-xs" style={{ color: colors.stone }}>Hakuna bora wa mkono bado.</p>
-          )}
         </div>
-      </section>
-
-      {/* ===== TOP 3 SCHOOL ===== */}
-      <section className="mb-6 rounded-xl border bg-white p-4" style={{ borderColor: colors.line }}>
-        <h2 className="text-sm font-semibold" style={{ color: colors.primary }}>
-          3. Top 3 chuo nzima (wastani)
-        </h2>
-        <form onSubmit={saveTop} className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
-          <div>
-            <label className={labelCls} style={{ color: colors.primary }}>Nafasi</label>
-            <select value={tPos} onChange={(e) => setTPos(e.target.value)} className={inputCls} style={{ borderColor: colors.line }}>
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-            </select>
-          </div>
-          <div>
-            <label className={labelCls} style={{ color: colors.primary }}>Jina</label>
-            <input value={tName} onChange={(e) => setTName(e.target.value)} className={inputCls} style={{ borderColor: colors.line }} required />
-          </div>
-          <div>
-            <label className={labelCls} style={{ color: colors.primary }}>Namba</label>
-            <input value={tCode} onChange={(e) => setTCode(e.target.value)} className={inputCls} style={{ borderColor: colors.line }} />
-          </div>
-          <div>
-            <label className={labelCls} style={{ color: colors.primary }}>Darasa</label>
-            <input value={tClass} onChange={(e) => setTClass(e.target.value)} className={inputCls} style={{ borderColor: colors.line }} />
-          </div>
-          <div>
-            <label className={labelCls} style={{ color: colors.primary }}>Wastani</label>
-            <input value={tAvg} onChange={(e) => setTAvg(e.target.value)} className={inputCls} style={{ borderColor: colors.line }} />
-          </div>
-          <div className="flex items-end">
-            <button type="submit" className="w-full rounded-lg px-3 py-2 text-sm font-semibold text-white" style={{ backgroundColor: colors.primary }}>
-              Hifadhi Top
-            </button>
-          </div>
-        </form>
-        <ul className="mt-3 space-y-1 text-sm">
-          {manualTop.map((t) => (
-            <li key={`${t.position}-${t.student_name}`}>
-              <strong>#{t.position}</strong> {t.student_name} ({t.class_name}) — {t.average}
-              {t.student_code ? ` · ${t.student_code}` : ""}
-            </li>
-          ))}
-          {!manualTop.length && (rankData?.school_top3 || []).map((s: any, i: number) => (
-            <li key={s.student_id || i}>
-              Auto #{i + 1} {s.student_name} ({s.class_name}) — {s.average}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {/* ===== RULES ===== */}
-      <section className="mb-6 rounded-xl border bg-white p-4" style={{ borderColor: colors.line }}>
-        <div className="mb-2 flex items-center gap-2">
-          <Settings2 size={16} style={{ color: colors.primary }} />
-          <h2 className="text-sm font-semibold" style={{ color: colors.primary }}>
-            4. Wastani wa chini / Term 2 + D → kurudishwa
-          </h2>
-        </div>
-        <form onSubmit={saveRule} className="flex flex-wrap gap-2">
-          <input value={ruleClass} onChange={(e) => setRuleClass(e.target.value)} className={inputCls} style={{ borderColor: colors.line, maxWidth: 160 }} placeholder="Darasa" />
-          <input value={minAvg} onChange={(e) => setMinAvg(e.target.value)} className={inputCls} style={{ borderColor: colors.line, maxWidth: 100 }} placeholder="Min avg" />
-          <button type="submit" className="rounded-lg px-3 py-2 text-sm font-semibold text-white" style={{ backgroundColor: colors.primary }}>
-            Hifadhi sheria
+        <div className="border-t px-4 py-3" style={{ borderColor: colors.line }}>
+          <p className="mb-2 text-xs" style={{ color: colors.stone }}>
+            Ikiwa SEHEMU 2 haina mistari, PDF itaonyesha SEHEMU 1 pekee (haitoi “Hakuna data”).
+          </p>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => downloadManualPdf("best")}
+            className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white"
+            style={{ backgroundColor: colors.primary }}
+          >
+            <Download size={16} />
+            Pakua PDF wanafunzi bora
           </button>
-        </form>
-        <ul className="mt-2 text-xs" style={{ color: colors.stone }}>
-          {rules.map((r: any) => (
-            <li key={r.id || r.class_name}>
-              {r.class_name}: min {r.min_average}, fail={r.fail_grade}
-            </li>
-          ))}
-        </ul>
-        <div className="mt-3 max-h-40 overflow-y-auto text-xs">
-          {promo.slice(0, 30).map((p: any) => (
-            <div key={p.student_id + String(p.class_name)} className="border-b py-1" style={{ borderColor: colors.line }}>
-              {p.student_name} — {p.average} — <strong>{p.decision}</strong>
-            </div>
-          ))}
         </div>
-      </section>
-
-      {/* ===== FILES ===== */}
-      <section className="rounded-xl border bg-white p-4" style={{ borderColor: colors.line }}>
-        <h2 className="text-sm font-semibold" style={{ color: colors.primary }}>
-          PDF zilizotengenezwa
-        </h2>
-        <ul className="mt-3 space-y-2">
-          {files.map((f) => (
-            <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 border-b py-2" style={{ borderColor: colors.line }}>
-              <div>
-                <p className="text-sm font-medium">{f.title}</p>
-                <p className="text-xs" style={{ color: colors.stone }}>
-                  {f.report_type} · {f.term || "—"} · {new Date(f.created_at).toLocaleString("sw-TZ")}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => downloadFile(f)}
-                className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
-                style={{ backgroundColor: colors.primary }}
-              >
-                <Download size={12} /> Pakua
-              </button>
-            </li>
-          ))}
-          {!files.length && <p className="text-xs" style={{ color: colors.stone }}>Hakuna PDF bado.</p>}
-        </ul>
       </section>
     </div>
   );

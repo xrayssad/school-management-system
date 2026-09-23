@@ -48,9 +48,7 @@ export default function ForgotPasswordPage() {
         <h1 className="font-serif text-2xl font-semibold" style={{ color: colors.primary }}>
           Umesahau nenosiri?
         </h1>
-        <p className="mt-2 text-sm" style={{ color: colors.stone }}>
-          Weka barua pepe au namba ya usajili. Tutakutumia kiungo cha kubadilisha nenosiri.
-        </p>
+        
 
         {done ? (
           <div className="mt-6 space-y-3">
@@ -74,7 +72,7 @@ export default function ForgotPasswordPage() {
           <form onSubmit={onSubmit} className="mt-6 space-y-4">
             <div>
               <label className="mb-1.5 block text-xs font-semibold" style={{ color: colors.primary }}>
-                Barua pepe au namba ya usajili
+                Namba ya usajili au email
               </label>
               <div className="relative">
                 <Mail size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" style={{ color: colors.stone }} />
@@ -84,7 +82,7 @@ export default function ForgotPasswordPage() {
                   onChange={(e) => setIdentifier(e.target.value)}
                   className="w-full rounded-lg border py-2.5 pl-9 pr-3 text-sm outline-none"
                   style={{ borderColor: colors.line }}
-                  placeholder="email@mfano.com au STU90001"
+                  placeholder="Namba ya usajili au email"
                 />
               </div>
             </div>

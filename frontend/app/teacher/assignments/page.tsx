@@ -9,7 +9,7 @@ import Badge from "@/components/Badge";
 import { api, ApiError } from "@/lib/api";
 import type { Assignment, Subject, Submission } from "@/lib/types";
 
-const CLASS_OPTIONS = ["Darasa la 3", "Darasa la 4", "Darasa la 5", "Darasa la 6"];
+const CLASS_OPTIONS = ["Darasa la 3", "Darasa la 4", "Darasa la 5"];
 
 export default function TeacherAssignmentsPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);

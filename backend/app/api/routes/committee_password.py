@@ -51,7 +51,7 @@ def send_reset_email(
         f"Habari {user.full_name},\n\n"
         f"Uongozi wa Kamati umeomba ubadilishaji wa nenosiri la akaunti yako.\n\n"
         f"Kiungo (saa 2):\n{link}\n\n"
-        f"— Al Madrasat Habiib El Mustwafaa"
+        f"— Madrasatul Habiib El Mustwafaa El Mustwafaa"
     )
     sent = send_email(user.email, "Badilisha nenosiri — Madrasa", body)
     out = {"detail": "Kiungo kimetumwa." if sent else "SMTP imeshindwa — angalia dev_reset_link", "email": user.email}
@@ -71,7 +71,7 @@ def committee_self_reset_email(
         f"Habari {current.full_name},\n\n"
         f"Ombi la kubadilisha nenosiri la akaunti yako ya Kamati.\n\n"
         f"Kiungo (saa 2):\n{link}\n\n"
-        f"— Al Madrasat Habiib El Mustwafaa"
+        f"— Madrasatul Habiib El Mustwafaa El Mustwafaa"
     )
     sent = send_email(current.email, "Badilisha nenosiri (Kamati) — Madrasa", body)
     out = {"detail": "Angalia barua pepe yako." if sent else "SMTP imeshindwa — tumia dev_reset_link", "email": current.email}

@@ -1,180 +1,199 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { useCallback, useEffect, useState } from "react";
 import { colors } from "@/lib/colors";
 import { allClasses } from "@/lib/classes";
+import MadrasaLoader from "@/components/MadrasaLoader";
+import { resultStatus, statusLabel, statusStyle } from "@/lib/gradeStatus";
 
-type Scale = {
-  class_name: string;
-  min_a: number;
-  min_b: number;
-  min_c: number;
-  min_d: number;
-  min_promote_average: number;
-  fail_letter?: string;
-};
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 export default function CommitteeGradesPage() {
-  const [scales, setScales] = useState<Scale[]>([]);
-  const [pending, setPending] = useState<any[]>([]);
+  const [className, setClassName] = useState("");
+  const [statusFilter, setStatusFilter] = useState("submitted");
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
-  const [form, setForm] = useState<Scale>({
-    class_name: "Maandalizi",
-    min_a: 75,
-    min_b: 65,
-    min_c: 50,
-    min_d: 40,
-    min_promote_average: 38,
-  });
 
-  async function load() {
+  const token = () => localStorage.getItem("madrasa_token");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
     try {
-      const [s, p] = await Promise.all([
-        api.get<Scale[]>("/committee/grades/scales").catch(() => []),
-        api.get<any[]>("/committee/grades/pending").catch(() => []),
-      ]);
-      setScales(Array.isArray(s) ? s : []);
-      setPending(Array.isArray(p) ? p : []);
+      const params = new URLSearchParams();
+      if (className) params.set("class_name", className);
+      params.set("status_filter", statusFilter);
+      const res = await fetch(`${API}/committee/grades/board?${params}`, {
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.detail || "Imeshindikana");
+      setData(body);
     } catch (e: any) {
       setError(e.message || "Imeshindikana");
+      setData(null);
+    } finally {
+      setLoading(false);
     }
-  }
+  }, [className, statusFilter]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
-  async function saveScale(e: FormEvent) {
-    e.preventDefault();
+  async function publishExam(examId: string) {
     setMsg("");
     setError("");
     try {
-      await api.put("/committee/grades/scales", form);
-      setMsg(`Scale ya ${form.class_name} imehifadhiwa (kubaki chini ya ${form.min_promote_average}%)`);
+      const res = await fetch(`${API}/committee/grades/exam/${examId}/publish`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.detail || JSON.stringify(body));
+      setMsg(`Imechapishwa: ${body.published}`);
       await load();
-    } catch (err: any) {
-      setError(err.message || "Imeshindikana");
+    } catch (e: any) {
+      setError(e.message || "Imeshindikana");
     }
   }
 
   async function publishAll() {
     setMsg("");
     try {
-      const r = await api.post<any>("/committee/grades/publish-all-submitted", {});
-      setMsg(
-        `Imechapishwa: ${r.published ?? 0}. Promotion: ${JSON.stringify(r.promotion || {})}`
-      );
+      const params = className ? `?class_name=${encodeURIComponent(className)}` : "";
+      const res = await fetch(`${API}/committee/grades/publish-all-submitted${params}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.detail || JSON.stringify(body));
+      setMsg(`Yote yamechapishwa: ${body.published}`);
       await load();
-    } catch (err: any) {
-      setError(err.message || "Imeshindikana");
+    } catch (e: any) {
+      setError(e.message || "Imeshindikana");
     }
   }
 
-  function pickScale(cn: string) {
-    const s = scales.find((x) => x.class_name === cn);
-    setForm({
-      class_name: cn,
-      min_a: s?.min_a ?? 75,
-      min_b: s?.min_b ?? 65,
-      min_c: s?.min_c ?? 50,
-      min_d: s?.min_d ?? 40,
-      min_promote_average: s?.min_promote_average ?? 40,
-    });
-  }
-
   return (
-    <div>
-      <h1 className="font-serif text-2xl font-semibold" style={{ color: colors.primary }}>
-        Matokeo na viwango vya darasa
-      </h1>
-      <p className="mt-1 text-sm" style={{ color: colors.stone }}>
-        Weka wastani wa chini wa kupandishwa kwa kila darasa (Maandalizi → la 5). Chini ya hiyo = anabaki.
-      </p>
+    <div className="space-y-4">
+      <div>
+        <h1 className="font-serif text-2xl font-semibold" style={{ color: colors.primary }}>
+          Matokeo
+        </h1>
+        <p className="mt-1 text-sm" style={{ color: colors.stone }}>
+          Kila darasa · kila somo · PASS / FAIL / INCOMPLETE
+        </p>
+      </div>
 
-      {msg && <p className="mt-3 text-sm" style={{ color: colors.primary }}>{msg}</p>}
-      {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
+      <div className="flex flex-wrap gap-2">
+        <select
+          value={className}
+          onChange={(e) => setClassName(e.target.value)}
+          className="rounded-lg border px-3 py-2 text-sm"
+          style={{ borderColor: colors.line }}
+        >
+          <option value="">Madarasa yote</option>
+          {allClasses().map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="rounded-lg border px-3 py-2 text-sm"
+          style={{ borderColor: colors.line }}
+        >
+          <option value="submitted">Zinazosubiri</option>
+          <option value="published">Zilizochapishwa</option>
+          <option value="all">Zote</option>
+        </select>
+        <button type="button" onClick={load} className="rounded-lg border px-3 py-2 text-sm font-medium" style={{ borderColor: colors.primary, color: colors.primary }}>
+          Onyesha
+        </button>
+        <button type="button" onClick={publishAll} className="rounded-lg px-3 py-2 text-sm font-semibold text-white" style={{ backgroundColor: colors.primary }}>
+          Chapisha zote (submitted)
+        </button>
+      </div>
 
-      <form onSubmit={saveScale} className="mt-4 rounded-xl border bg-white p-4 space-y-3" style={{ borderColor: colors.line }}>
-        <p className="text-sm font-semibold" style={{ color: colors.primary }}>Scale kwa darasa</p>
-        <div>
-          <label className="text-xs font-medium">Darasa</label>
-          <select
-            value={form.class_name}
-            onChange={(e) => pickScale(e.target.value)}
-            className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            style={{ borderColor: colors.line }}
-          >
-            {allClasses().map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-          {(
-            [
-              ["min_a", "Min A"],
-              ["min_b", "Min B"],
-              ["min_c", "Min C"],
-              ["min_d", "Min D"],
-              ["min_promote_average", "Wastani kupandishwa"],
-            ] as const
-          ).map(([key, label]) => (
-            <div key={key}>
-              <label className="text-xs font-medium">{label}</label>
-              <input
-                type="number"
-                step="0.1"
-                value={(form as any)[key]}
-                onChange={(e) => setForm({ ...form, [key]: parseFloat(e.target.value) || 0 })}
-                className="mt-1 w-full rounded-lg border px-2 py-1.5 text-sm"
-                style={{ borderColor: colors.line }}
-              />
+      {msg && <p className="text-sm" style={{ color: colors.primary }}>{msg}</p>}
+      {error && <p className="text-sm text-red-700">{error}</p>}
+
+      {loading ? (
+        <MadrasaLoader label="Inapakia matokeo…" />
+      ) : (
+        <div className="space-y-6">
+          {(data?.classes || []).map((block: any) => (
+            <div key={block.class_name}>
+              <h2 className="font-serif text-lg font-semibold" style={{ color: colors.primary }}>
+                {block.class_name}
+              </h2>
+              <div className="mt-2 space-y-4">
+                {(block.exams || []).map((ex: any) => (
+                  <div key={ex.exam_id} className="rounded-xl border bg-white" style={{ borderColor: colors.line }}>
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3" style={{ borderColor: colors.line }}>
+                      <div>
+                        <p className="text-sm font-semibold">{ex.subject_name || ex.exam_title}</p>
+                        <p className="text-xs" style={{ color: colors.stone }}>
+                          {ex.exam_title} · wanafunzi {ex.grades?.length || 0}
+                        </p>
+                      </div>
+                      {statusFilter !== "published" && (
+                        <button
+                          type="button"
+                          onClick={() => publishExam(ex.exam_id)}
+                          className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
+                          style={{ backgroundColor: colors.primary }}
+                        >
+                          Idhinisha / chapisha somo hili
+                        </button>
+                      )}
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[520px] text-left text-sm">
+                        <thead>
+                          <tr className="text-xs" style={{ color: colors.stone }}>
+                            <th className="px-3 py-2">Namba</th>
+                            <th>Jina</th>
+                            <th>Alama</th>
+                            <th>Grade</th>
+                            <th>Status</th>
+                            <th>Hali (mfumo)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(ex.grades || []).map((g: any) => {
+                            const st = resultStatus(g.grade_letter, g.marks_obtained);
+                            return (
+                              <tr key={g.grade_id} className="border-t" style={{ borderColor: colors.line }}>
+                                <td className="px-3 py-2">{g.student_code}</td>
+                                <td>{g.full_name}</td>
+                                <td>{g.marks_obtained}</td>
+                                <td>{g.grade_letter || "—"}</td>
+                                <td>
+                                  <span className="inline-block rounded px-2 py-0.5 text-xs font-bold" style={statusStyle(st)}>
+                                    {statusLabel(st)}
+                                  </span>
+                                </td>
+                                <td className="text-xs">{g.status === "published" ? "Imechapishwa" : "Submitted"}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
+          {!data?.classes?.length && (
+            <p className="text-sm" style={{ color: colors.stone }}>Hakuna matokeo.</p>
+          )}
         </div>
-        <button type="submit" className="rounded-lg px-4 py-2 text-sm font-semibold text-white" style={{ backgroundColor: colors.primary }}>
-          Hifadhi scale
-        </button>
-      </form>
-
-      <div className="mt-4 overflow-x-auto rounded-xl border bg-white" style={{ borderColor: colors.line }}>
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="text-xs" style={{ color: colors.stone }}>
-              <th className="px-3 py-2">Darasa</th>
-              <th>A</th><th>B</th><th>C</th><th>D</th>
-              <th>Wastani (kubaki chini yake)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {allClasses().map((cn) => {
-              const s = scales.find((x) => x.class_name === cn);
-              return (
-                <tr key={cn} className="border-t cursor-pointer" style={{ borderColor: colors.line }} onClick={() => pickScale(cn)}>
-                  <td className="px-3 py-2 font-medium">{cn}</td>
-                  <td>{s?.min_a ?? "—"}</td>
-                  <td>{s?.min_b ?? "—"}</td>
-                  <td>{s?.min_c ?? "—"}</td>
-                  <td>{s?.min_d ?? "—"}</td>
-                  <td>{s?.min_promote_average ?? "—"}%</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="mt-6">
-        <div className="flex items-center justify-between">
-          <h2 className="font-serif text-lg font-semibold" style={{ color: colors.primary }}>Zilizowasilishwa</h2>
-          <button type="button" onClick={publishAll} className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white" style={{ backgroundColor: colors.primary }}>
-            Chapisha zote + pandisha/rudisha
-          </button>
-        </div>
-        <p className="mt-1 text-xs" style={{ color: colors.stone }}>Jumla pending: {pending.length}</p>
-      </div>
+      )}
     </div>
   );
 }

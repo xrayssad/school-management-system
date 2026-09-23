@@ -7,130 +7,122 @@ import { useAuth } from "@/lib/auth-context";
 import { colors } from "@/lib/colors";
 
 const links = [
-  { href: "/#home", label: "Nyumbani" },
-  { href: "/#about", label: "Kuhusu Sisi" },
-  { href: "/#services", label: "Huduma Zetu" },
+  { href: "/#programs", label: "Programu" },
+  { href: "/#about", label: "Kuhusu" },
   { href: "/#contact", label: "Mawasiliano" },
 ];
 
-export default function PublicNav() {
+export default function PublicNav({ transparent = false }: { transparent?: boolean }) {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
 
   const portalHref =
-    user?.role === "committee" || user?.role === "admin"
+    user?.role === "committee"
       ? "/committee/dashboard"
-      : user?.role === "teacher"
+      : user?.role === "teacher" || user?.role === "admin"
         ? "/teacher/dashboard"
-        : user
-          ? "/dashboard"
-          : "/login";
+        : "/dashboard";
 
   return (
-    <>
-      <div className="text-sm" style={{ backgroundColor: colors.deep, color: colors.sage }}>
-        <div className="mx-auto flex max-w-6xl flex-wrap justify-between gap-2 px-6 py-2">
-          <span>+255 776 475 792 · +255 652 929 146</span>
-          <span>habibielmustwafa@gmail.com</span>
-        </div>
-      </div>
-      <header style={{ backgroundColor: colors.primary }}>
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
-          <Link href="/" className="flex items-center gap-3">
-            <Image
-              src="/images/logo2.jpg"
-              alt="Nembo"
-              width={52}
-              height={52}
-              className="rounded-full border-2 object-cover"
-              style={{ borderColor: colors.sage, width: 52, height: "auto" }}
-            />
-            <div>
-              <p className="font-serif text-base leading-tight text-white" style={{ fontFamily: "Amiri, Lora, serif" }}>
-                مدرسة الحبيب المصطفى
-              </p>
-              <p className="text-sm font-semibold text-white">Madrasa Habib el Mustwafa</p>
-            </div>
-          </Link>
-          <div className="hidden items-center gap-3 md:flex">
-            {user ? (
+    <header className="absolute left-0 right-0 top-0 z-50 px-4 pt-5 md:px-6">
+      <div
+        className="mx-auto flex max-w-4xl items-center justify-between gap-3 rounded-full border px-3 py-2 shadow-lg backdrop-blur-md md:px-5"
+        style={{
+          backgroundColor: transparent ? "rgba(255,255,255,0.92)" : "#fff",
+          borderColor: "rgba(24,69,59,0.12)",
+        }}
+      >
+        <Link href="/" className="flex shrink-0 items-center gap-2.5 pl-1">
+          <Image
+            src="/images/logo2.jpg"
+            alt="Nembo"
+            width={32}
+            height={32}
+            className="rounded-full object-cover"
+            style={{ width: 32, height: 32 }}
+          />
+          <span className="hidden font-serif text-sm font-semibold sm:block" style={{ color: colors.primary }}>
+            Madrasatul Habiib
+          </span>
+        </Link>
+
+        <nav className="hidden items-center gap-6 md:flex">
+          {links.map((l) => (
+            <a
+              key={l.href}
+              href={l.href}
+              className="text-sm font-medium transition-colors hover:opacity-80"
+              style={{ color: colors.ink }}
+            >
+              {l.label}
+            </a>
+          ))}
+        </nav>
+
+        <div className="flex items-center gap-2">
+          {user ? (
+            <Link
+              href={portalHref}
+              className="rounded-full px-4 py-2 text-sm font-semibold text-white"
+              style={{ backgroundColor: colors.primary }}
+            >
+              Portal
+            </Link>
+          ) : (
+            <>
               <Link
-                href={portalHref}
-                className="rounded-full px-5 py-2 text-sm font-semibold"
-                style={{ backgroundColor: colors.sage, color: colors.deep }}
+                href="/login"
+                className="hidden rounded-full border px-4 py-2 text-sm font-semibold sm:inline-block"
+                style={{ borderColor: colors.primary, color: colors.primary }}
               >
-                Portal yangu
-              </Link>
-            ) : (
-              <>
-                <Link href="/login" className="text-sm font-medium text-white/90 hover:text-white">
-                  Ingia
-                </Link>
-                <Link
-                  href="/register"
-                  className="rounded-full px-5 py-2 text-sm font-semibold text-white"
-                  style={{ backgroundColor: colors.deep }}
-                >
-                  Jisajili
-                </Link>
-              </>
-            )}
-          </div>
-          <button
-            type="button"
-            className="text-white md:hidden"
-            onClick={() => setOpen((o) => !o)}
-            aria-label="Menyu"
-          >
-            {open ? "✕" : "☰"}
-          </button>
-        </div>
-      </header>
-      <nav style={{ backgroundColor: colors.deep }}>
-        <div className="mx-auto max-w-6xl px-6">
-          <ul className="hidden justify-center gap-1 md:flex">
-            {links.map((l) => (
-              <li key={l.href}>
-                <a
-                  href={l.href}
-                  className="block px-5 py-3 text-sm font-medium text-white/90 transition hover:text-white"
-                  style={{ borderBottom: "2px solid transparent" }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLElement).style.borderBottomColor = colors.sage;
-                    (e.currentTarget as HTMLElement).style.color = colors.sage;
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLElement).style.borderBottomColor = "transparent";
-                    (e.currentTarget as HTMLElement).style.color = "";
-                  }}
-                >
-                  {l.label}
-                </a>
-              </li>
-            ))}
-            <li>
-              <Link href="/register" className="block px-5 py-3 text-sm font-medium" style={{ color: colors.sage }}>
-                Jisajili
-              </Link>
-            </li>
-          </ul>
-          {open && (
-            <div className="flex flex-col gap-2 py-4 md:hidden">
-              {links.map((l) => (
-                <a key={l.href} href={l.href} onClick={() => setOpen(false)} className="text-sm text-white">
-                  {l.label}
-                </a>
-              ))}
-              <Link href="/register" onClick={() => setOpen(false)} className="text-sm font-semibold" style={{ color: colors.sage }}>
-                Jisajili
-              </Link>
-              <Link href="/login" onClick={() => setOpen(false)} className="text-sm text-white">
                 Ingia
               </Link>
-            </div>
+              <Link
+                href="/register"
+                className="rounded-full px-4 py-2 text-sm font-semibold text-white"
+                style={{ backgroundColor: colors.primary }}
+              >
+                Jisajili
+              </Link>
+            </>
           )}
+          <button
+            type="button"
+            className="flex h-9 w-9 items-center justify-center rounded-full border md:hidden"
+            style={{ borderColor: colors.line }}
+            onClick={() => setOpen((o) => !o)}
+            aria-label="Menu"
+          >
+            {open ? "×" : "☰"}
+          </button>
         </div>
-      </nav>
-    </>
+      </div>
+
+      {open && (
+        <div
+          className="mx-auto mt-2 max-w-4xl rounded-2xl border bg-white p-4 shadow-lg md:hidden"
+          style={{ borderColor: colors.line }}
+        >
+          <div className="flex flex-col gap-3">
+            {links.map((l) => (
+              <a
+                key={l.href}
+                href={l.href}
+                onClick={() => setOpen(false)}
+                className="text-sm font-medium"
+                style={{ color: colors.ink }}
+              >
+                {l.label}
+              </a>
+            ))}
+            {!user && (
+              <Link href="/login" className="text-sm font-semibold" style={{ color: colors.primary }}>
+                Ingia
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+    </header>
   );
 }

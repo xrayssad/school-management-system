@@ -88,21 +88,86 @@ def create_announcement(body: CommitteeAnnouncementCreate, db: Session = Depends
     return CommitteeAnnouncementOut(id=row.id, title=row.title, content=row.content, target_class_id=row.target_class_name, target_class_name=row.target_class_name, created_by=user.full_name, created_at=row.created_at, reach_count=row.reach_count)
 
 
+
+
 @router.get("/teachers", response_model=list[TeacherItemOut])
 def list_teachers(db: Session = Depends(get_db), _: User = Depends(require_committee)):
-    Subject = _Subject()
-    teachers = db.execute(select(User).where(User.role == UserRole.teacher)).scalars().all()
-    out = []
-    for t in teachers:
-        assigns = db.execute(select(TeacherAssignment).where(TeacherAssignment.teacher_id == t.id)).scalars().all()
-        subject_names, class_names = [], []
+    """Walimu + masomo/madarasa — batch (si N+1)."""
+    teachers = (
+        db.query(User)
+        .filter(User.role == UserRole.teacher)
+        .order_by(User.full_name)
+        .all()
+    )
+    if not teachers:
+        return []
+
+    profile_ids = []
+    user_ids = [u.id for u in teachers]
+    for u in teachers:
+        tp = getattr(u, "teacher_profile", None)
+        if tp is not None:
+            profile_ids.append(tp.id)
+
+    ids_for_assign = list(set(user_ids) | set(profile_ids))
+    all_assigns = []
+    if ids_for_assign:
+        all_assigns = list(
+            db.execute(
+                select(TeacherAssignment).where(
+                    TeacherAssignment.teacher_id.in_(ids_for_assign)
+                )
+            ).scalars().all()
+        )
+
+    sub_ids = list({a.subject_id for a in all_assigns if a.subject_id})
+    sub_map: dict = {}
+    if sub_ids:
+        try:
+            for s in db.query(Subject).filter(Subject.id.in_(sub_ids)).all():
+                sub_map[s.id] = s.name
+        except NameError:
+            from sqlalchemy import text as sa_text
+            rows = db.execute(
+                sa_text("SELECT id, name FROM subjects WHERE id = ANY(:ids)"),
+                {"ids": sub_ids},
+            ).fetchall()
+            sub_map = {r[0]: r[1] for r in rows}
+
+    by_teacher: dict = {}
+    for a in all_assigns:
+        by_teacher.setdefault(a.teacher_id, []).append(a)
+
+    out: list[TeacherItemOut] = []
+    for u in teachers:
+        tids = [u.id]
+        tp = getattr(u, "teacher_profile", None)
+        if tp is not None:
+            tids.append(tp.id)
+        assigns = []
+        for tid in tids:
+            assigns.extend(by_teacher.get(tid, []))
+        seen = set()
+        uniq = []
         for a in assigns:
-            sub = db.get(Subject, a.subject_id)
-            if sub and sub.name not in subject_names:
-                subject_names.append(sub.name)
-            if a.class_name not in class_names:
-                class_names.append(a.class_name)
-        out.append(TeacherItemOut(id=t.id, full_name=t.full_name, email=t.email, phone=t.phone or "", subjects=subject_names, classes=class_names))
+            if a.id in seen:
+                continue
+            seen.add(a.id)
+            uniq.append(a)
+        subjects = sorted({sub_map.get(a.subject_id, "") for a in uniq if a.subject_id} - {""})
+        classes = sorted(
+            {(a.class_name or "").strip() for a in uniq if (a.class_name or "").strip()}
+        )
+        out.append(
+            TeacherItemOut(
+                id=u.id,
+                full_name=u.full_name,
+                email=u.email,
+                phone=u.phone or "",
+                subjects=subjects,
+                classes=classes,
+            )
+        )
     return out
 
 
