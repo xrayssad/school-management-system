@@ -103,11 +103,11 @@ export default function CommitteeExamsPage() {
     }
   }
 
-  async function handlePublish(id: number) {
+  async function handlePublish(id: string) {
     setError("");
     setSuccess("");
     try {
-      await committeeApi.publishExamSchedule(String(id));
+      await committeeApi.publishExamSchedule(id);
       setSuccess("Imechapishwa.");
       await loadData();
     } catch (err) {
