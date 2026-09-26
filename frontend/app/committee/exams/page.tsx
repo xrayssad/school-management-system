@@ -206,7 +206,7 @@ export default function CommitteeExamsPage() {
                     </td>
                     <td className="px-4 py-3">
                       {item.status === "draft" && (
-                        <button type="button" onClick={() => handlePublish(item.id)} className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: colors.primary }}>
+                        <button type="button" onClick={() => handlePublish(String(item.id))} className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: colors.primary }}>
                           <CheckCircle size={12} /> Chapisha
                         </button>
                       )}
