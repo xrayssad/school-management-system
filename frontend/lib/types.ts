@@ -298,3 +298,5 @@ export interface CommitteeTimetableEntry {
   end_time: string;
   status: PublishStatus;
 }
+
+export type AuthUser = User;

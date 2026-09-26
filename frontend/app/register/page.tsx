@@ -231,7 +231,7 @@ export default function RegisterPage() {
               <div className="grid gap-4 sm:grid-cols-3">
                 <Labeled label="Darasa">
                   <BookInput>
-                    <select className="no-ico" value={className} onChange={(e) => setClassName(e.target.value)}>
+                    <select className="no-ico" value={className} onChange={(e) => setClassName(e.target.value as any)}>
                       {CLASS_OPTIONS.map((c) => (
                         <option key={c} value={c}>{c}</option>
                       ))}

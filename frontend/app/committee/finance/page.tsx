@@ -251,7 +251,7 @@ function FinanceList({
 }: {
   title: string;
   icon: typeof Wallet;
-  rows: { id: number; primary: string; secondary: string }[];
+  rows: { id: string; primary: string; secondary: string }[];
 }) {
   return (
     <div className="rounded-xl border bg-white" style={{ borderColor: colors.line }}>
