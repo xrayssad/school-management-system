@@ -107,7 +107,7 @@ export default function CommitteeExamsPage() {
     setError("");
     setSuccess("");
     try {
-      await committeeApi.publishExamSchedule(id);
+      await committeeApi.publishExamSchedule(String(id));
       setSuccess("Imechapishwa.");
       await loadData();
     } catch (err) {
