@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
 
+    # Either name is accepted. Render was documented as CORS_ORIGINS;
+    # older deploys used FRONTEND_ORIGINS. Both are merged.
+    CORS_ORIGINS: str = ""
     FRONTEND_ORIGINS: str = "http://localhost:3000"
 
     # Optional email (Gmail app password / any SMTP)
@@ -37,7 +40,13 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins(self) -> list[str]:
-        return [o.strip() for o in self.FRONTEND_ORIGINS.split(",") if o.strip()]
+        raw = ",".join(part for part in (self.CORS_ORIGINS, self.FRONTEND_ORIGINS) if part)
+        seen: list[str] = []
+        for origin in raw.split(","):
+            origin = origin.strip()
+            if origin and origin not in seen:
+                seen.append(origin)
+        return seen
 
 
 settings = Settings()
