@@ -35,11 +35,11 @@ export default function PublicNav({ transparent = false }: { transparent?: boole
         <Link href="/" className="flex shrink-0 items-center gap-2.5 pl-1">
           <Image
             src="/images/logo2.jpg"
-            alt="Nembo"
-            width={32}
-            height={32}
-            className="rounded-full object-cover"
-            style={{ width: 32, height: 32 }}
+            alt="Nembo ya Madrasatul Habiib"
+            width={44}
+            height={44}
+            className="rounded-full bg-white object-contain"
+            style={{ width: 44, height: 44 }}
           />
           <span className="hidden font-serif text-sm font-semibold sm:block" style={{ color: colors.primary }}>
             Madrasatul Habiib

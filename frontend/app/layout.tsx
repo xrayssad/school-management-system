@@ -5,6 +5,7 @@ import { AuthProvider } from "@/lib/auth-context";
 export const metadata: Metadata = {
   title: "Madrasa Habib el Mustwafa",
   description: "School Management System",
+  icons: { icon: "/images/logo2.jpg", apple: "/images/logo2.jpg" },
 };
 
 export default function RootLayout({

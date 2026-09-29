@@ -77,11 +77,20 @@ export default function AppShell({
       )}
 
       <div className="flex min-h-screen flex-1 flex-col md:ml-64">
-        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-teal-100/60 bg-white/90 px-6 py-3 backdrop-blur md:hidden">
+        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-teal-100/60 bg-white/90 px-4 py-3 backdrop-blur md:hidden">
           <button onClick={() => setMobileOpen(true)} aria-label="Open menu">
             <Menu className="h-6 w-6 text-teal-800" />
           </button>
-          <span className="font-serif text-base font-semibold text-teal-800">{portalLabel}</span>
+          <span className="flex items-center gap-2 font-serif text-base font-semibold text-teal-800">
+            <Image
+              src="/images/logo2.jpg"
+              alt="Nembo ya Madrasatul Habiib"
+              width={32}
+              height={32}
+              className="rounded-full bg-white object-contain"
+            />
+            {portalLabel}
+          </span>
           <div className="w-6" />
         </header>
 
@@ -109,7 +118,7 @@ function SidebarContent({
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 border-b border-white/10 px-5 py-5">
-        <Image src="/images/logo2.jpg" alt="Logo" width={36} height={36} className="rounded-full object-cover" />
+        <Image src="/images/logo2.jpg" alt="Nembo ya Madrasatul Habiib" width={40} height={40} className="rounded-full bg-white object-contain" />
         <div>
           <p className="font-serif text-sm font-semibold leading-tight">Al Madrasat Habiib</p>
           <p className="text-xs text-teal-200">{portalLabel}</p>
