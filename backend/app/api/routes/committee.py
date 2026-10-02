@@ -359,7 +359,7 @@ def list_timetable(db: Session = Depends(get_db), _: User = Depends(require_comm
 def create_timetable_entry(body: TimetableCreate, db: Session = Depends(get_db), _: User = Depends(require_committee)):
     Subject = _Subject()
     if body.day_of_week == FRIDAY_DAY_OF_WEEK or body.day_of_week not in SCHOOL_DAY_OF_WEEK:
-        raise HTTPException(status_code=400, detail="Ijumaa hakuna masomo — chagua siku ya shule (J.1–J.6).")
+        raise HTTPException(status_code=400, detail="Ijumaa hakuna masomo — chagua siku ya shule.")
     sub = db.get(Subject, body.subject_id)
     if not sub:
         raise HTTPException(status_code=404, detail="Somo halijapatikana.")

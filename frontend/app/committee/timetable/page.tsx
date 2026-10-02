@@ -130,7 +130,7 @@ export default function CommitteeTimetablePage() {
         <form onSubmit={handleCreate} className="grid gap-3 md:grid-cols-2">
           <select value={dayOfWeek} onChange={(e) => setDayOfWeek(e.target.value)} className="rounded-lg border px-3 py-2.5 text-sm" style={{ borderColor: colors.line, backgroundColor: colors.soft }}>
             {SCHOOL_DAYS.map((d) => (
-              <option key={d.value} value={d.value}>{d.j} {d.label}</option>
+              <option key={d.value} value={d.value}>{d.label}</option>
             ))}
           </select>
           <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)} className="rounded-lg border px-3 py-2.5 text-sm" style={{ borderColor: colors.line, backgroundColor: colors.soft }} required>
@@ -157,7 +157,7 @@ export default function CommitteeTimetablePage() {
         <button type="button" onClick={() => setDayFilter("all")} className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: dayFilter === "all" ? colors.primary : colors.soft, color: dayFilter === "all" ? "#fff" : colors.primary }}>Zote</button>
         {SCHOOL_DAYS.map((d) => (
           <button key={d.value} type="button" onClick={() => setDayFilter(d.value)} className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: dayFilter === d.value ? colors.primary : colors.soft, color: dayFilter === d.value ? "#fff" : colors.primary }}>
-            {d.j}
+            {d.label}
           </button>
         ))}
       </div>
