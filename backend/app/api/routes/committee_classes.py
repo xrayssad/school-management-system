@@ -16,7 +16,7 @@ def list_classes(
     db: Session = Depends(get_db),
     _: User = Depends(require_role(UserRole.committee, UserRole.admin)),
 ):
-    """Orodha kamili mara moja: Maandalizi .. Darasa la 5."""
+    """Orodha kamili mara moja: Maandalizi .. Darasa la 5 + Viziwi."""
     counts = {
         r[0]: int(r[1])
         for r in db.execute(

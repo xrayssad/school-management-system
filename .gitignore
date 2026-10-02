@@ -79,3 +79,5 @@ backups/
 *.dump
 sample_data/students_progress_test.csv
 sample_data/*_test.csv
+.vercel
+.env*

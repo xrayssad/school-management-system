@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 import json
 
 from app.api.deps import require_role
+from app.core.classes import FRIDAY_DAY_OF_WEEK
 from app.db.session import get_db, engine
 from app.models.user import User, UserRole
 
@@ -273,7 +274,15 @@ def my_schedule(db: Session = Depends(get_db), user: User = Depends(require_teac
     ).mappings().all()
     for r in rows:
         d = dict(r)
-        d["day_label"] = DAY_NAMES.get(d.get("day_of_week"), str(d.get("day_of_week")))
+        dw = d.get("day_of_week")
+        try:
+            dw_n = int(dw)
+        except (TypeError, ValueError):
+            dw_n = None
+        label = DAY_NAMES.get(dw, str(dw) if dw is not None else "")
+        if dw_n == FRIDAY_DAY_OF_WEEK or label == "Ijumaa" or str(dw).lower() in ("friday", "ijumaa", "4"):
+            continue  # Ijumaa — hakuna masomo
+        d["day_label"] = label
         entries.append(d)
     return {
         "entries": entries,

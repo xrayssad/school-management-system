@@ -9,8 +9,9 @@ import { Card, Spinner } from "@/components/Card";
 import { api } from "@/lib/api";
 import type { User } from "@/lib/types";
 import { colors } from "@/lib/colors";
+import { allClasses } from "@/lib/classes";
 
-const CLASS_OPTIONS = ["Darasa la 1", "Darasa la 2", "Darasa la 3", "Darasa la 4", "Darasa la 5"];
+const CLASS_OPTIONS = allClasses();
 const STATUSES = [
   { id: "present" as const, label: "Poa", icon: Check },
   { id: "late" as const, label: "Kuchelewa", icon: Clock },

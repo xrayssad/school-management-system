@@ -3,6 +3,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_role
+from app.core.classes import FRIDAY_DAY_OF_WEEK
 from app.db.session import get_db
 from app.models.user import User, UserRole
 
@@ -50,6 +51,12 @@ def my_timetable(
     for r in rows:
         d = dict(r)
         dw = d.get("day_of_week")
+        try:
+            dw_n = int(dw)
+        except (TypeError, ValueError):
+            dw_n = None
+        if dw_n == FRIDAY_DAY_OF_WEEK or DAY_NAMES.get(dw) == "Ijumaa":
+            continue  # Ijumaa — hakuna masomo
         d["day_label"] = DAY_NAMES.get(dw, DAY_NAMES.get(str(dw), str(dw)))
         entries.append(d)
     return {"class_name": cn, "entries": entries, "table": "committee_timetable_entries"}

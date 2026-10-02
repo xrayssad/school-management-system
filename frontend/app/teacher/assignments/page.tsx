@@ -8,8 +8,9 @@ import { Card, Spinner, EmptyState } from "@/components/Card";
 import Badge from "@/components/Badge";
 import { api, ApiError } from "@/lib/api";
 import type { Assignment, Subject, Submission } from "@/lib/types";
+import { allClasses } from "@/lib/classes";
 
-const CLASS_OPTIONS = ["Darasa la 3", "Darasa la 4", "Darasa la 5"];
+const CLASS_OPTIONS = allClasses();
 
 export default function TeacherAssignmentsPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);

@@ -6,12 +6,15 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_role
+from app.core.classes import FRIDAY_DAY_OF_WEEK
 from app.db.session import get_db
 from app.models.user import User, UserRole
 
 router = APIRouter(tags=["timetable-views"])
 
 STATUS_OK = "(c.status IS NULL OR c.status::text IN ('published', 'draft'))"
+# Ijumaa (index 4 au jina) — hakuna masomo
+NO_FRIDAY = f"(c.day_of_week IS DISTINCT FROM {FRIDAY_DAY_OF_WEEK} AND lower(c.day_of_week::text) NOT IN ('4', 'friday', 'ijumaa'))"
 
 
 def _teacher_ids(db: Session, user: User):
@@ -39,6 +42,7 @@ def teacher_my_schedule(
             LEFT JOIN subjects s ON s.id = c.subject_id
             WHERE (c.teacher_id = :uid OR c.teacher_id = :tid)
               AND {STATUS_OK}
+              AND {NO_FRIDAY}
             ORDER BY
               CASE c.day_of_week
                 WHEN 'Jumatatu' THEN 1 WHEN 'Jumanne' THEN 2 WHEN 'Jumatano' THEN 3
@@ -115,6 +119,7 @@ def student_my_timetable(
             LEFT JOIN teacher_profiles tp ON tp.id = c.teacher_id
             LEFT JOIN users u2 ON u2.id = tp.user_id
             WHERE c.class_name = :cn AND {STATUS_OK}
+              AND {NO_FRIDAY}
             ORDER BY
               CASE c.day_of_week
                 WHEN 'Jumatatu' THEN 1 WHEN 'Jumanne' THEN 2 WHEN 'Jumatano' THEN 3

@@ -25,6 +25,7 @@ except Exception:
         "Darasa la 3",
         "Darasa la 4",
         "Darasa la 5",
+        "Viziwi",
     ]
 
 router = APIRouter(prefix="/committee/exam-reports", tags=["committee-exam-reports"])

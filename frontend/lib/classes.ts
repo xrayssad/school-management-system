@@ -1,4 +1,4 @@
-/** Madarasa rasmi: Maandalizi + Darasa la 1–5 (hakuna 6 wala 7). */
+/** Madarasa rasmi: Maandalizi + Darasa la 1–5 + Viziwi (hakuna 6 wala 7). */
 export const CLASS_ORDER = [
   "Maandalizi",
   "Darasa la 1",
@@ -6,6 +6,7 @@ export const CLASS_ORDER = [
   "Darasa la 3",
   "Darasa la 4",
   "Darasa la 5",
+  "Viziwi",
 ] as const;
 
 export type ClassName = (typeof CLASS_ORDER)[number];

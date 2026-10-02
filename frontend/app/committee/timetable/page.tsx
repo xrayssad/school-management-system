@@ -15,7 +15,7 @@ const DAYS = [
   { value: 1, label: "Jumanne" },
   { value: 2, label: "Jumatano" },
   { value: 3, label: "Alhamisi" },
-  { value: 4, label: "Ijumaa" },
+  // Ijumaa — hakuna masomo
   { value: 5, label: "Jumamosi" },
 ];
 

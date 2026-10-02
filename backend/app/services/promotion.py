@@ -1,4 +1,7 @@
-"""Kupandishwa / kurudishwa — scale YA DARASA (Kamati); mfululizo: Maandalizi → 1…5."""
+"""Kupandishwa / kurudishwa — scale YA DARASA (Kamati); mfululizo: Maandalizi → 1…5.
+
+Viziwi si sehemu ya mfululizo wa kupandishwa — hubaki darasa lake (haitachanganywa).
+"""
 from __future__ import annotations
 
 import re
@@ -7,7 +10,7 @@ from collections import defaultdict
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-# Mpangilio kamili wa madarasa (index 0 = kwanza)
+# Mpangilio wa kupandishwa tu (bila Viziwi)
 CLASS_ORDER = [
     "Maandalizi",
     "Darasa la 1",
@@ -16,6 +19,8 @@ CLASS_ORDER = [
     "Darasa la 4",
     "Darasa la 5",
 ]
+
+ISOLATED_CLASSES = frozenset({"viziwi"})
 
 
 def _norm(name: str | None) -> str:
@@ -26,6 +31,8 @@ def class_index(class_name: str | None) -> int | None:
     if not class_name:
         return None
     n = _norm(class_name)
+    if n in ISOLATED_CLASSES:
+        return None
     for i, c in enumerate(CLASS_ORDER):
         if _norm(c) == n:
             return i
@@ -41,7 +48,9 @@ def class_index(class_name: str | None) -> int | None:
 
 
 def next_class_name(class_name: str | None) -> str | None:
-    """Darasa linalofuata. Baada ya Darasa la 5 → None (hitimu)."""
+    """Darasa linalofuata. Baada ya Darasa la 5 → None (hitimu). Viziwi → None."""
+    if _norm(class_name) in ISOLATED_CLASSES:
+        return None
     i = class_index(class_name)
     if i is None:
         return None

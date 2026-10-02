@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_committee,  require_role
+from app.core.classes import FRIDAY_DAY_OF_WEEK
 from app.core.security import hash_password as hash_password
 from app.db.session import get_db
 from app.models.user import User, UserRole, StudentProfile, TeacherProfile
@@ -346,6 +347,8 @@ def list_timetable(db: Session = Depends(get_db), _: User = Depends(require_comm
     rows = db.execute(select(CommitteeTimetableEntry).order_by(CommitteeTimetableEntry.day_of_week, CommitteeTimetableEntry.start_time)).scalars().all()
     out = []
     for r in rows:
+        if r.day_of_week == FRIDAY_DAY_OF_WEEK:
+            continue  # Ijumaa — hakuna masomo
         sub = db.get(Subject, r.subject_id)
         t = db.get(User, r.teacher_id)
         out.append(TimetableOut(id=r.id, subject_id=r.subject_id, subject_name=sub.name if sub else "", teacher_id=r.teacher_id, teacher_name=t.full_name if t else "", class_id=r.class_name, class_name=r.class_name, day_of_week=r.day_of_week, day_name=DAY_NAMES[r.day_of_week] if 0 <= r.day_of_week < len(DAY_NAMES) else str(r.day_of_week), start_time=r.start_time, end_time=r.end_time, status=r.status.value if hasattr(r.status, "value") else str(r.status)))
@@ -355,6 +358,8 @@ def list_timetable(db: Session = Depends(get_db), _: User = Depends(require_comm
 @router.post("/timetable", response_model=TimetableOut, status_code=201)
 def create_timetable_entry(body: TimetableCreate, db: Session = Depends(get_db), _: User = Depends(require_committee)):
     Subject = _Subject()
+    if body.day_of_week == FRIDAY_DAY_OF_WEEK:
+        raise HTTPException(status_code=400, detail="Ijumaa hakuna masomo — chagua siku nyingine.")
     sub = db.get(Subject, body.subject_id)
     if not sub:
         raise HTTPException(status_code=404, detail="Somo halijapatikana.")
