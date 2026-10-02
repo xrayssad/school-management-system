@@ -7,6 +7,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.db.base import Base
 from app.db.session import engine
+
+def _ensure_grade_columns():
+    try:
+        from sqlalchemy import text
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE grades ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'submitted'"))
+            conn.execute(text("ALTER TABLE grades ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ NULL"))
+    except Exception as e:
+        print("ensure_grade_columns:", e)
+
 from app import models  # noqa: F401  -- ensures all models are registered on Base.metadata
 
 from app.api.routes import committee_announcements_files
@@ -42,6 +52,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 def on_startup():
     # Creates tables if they don't already exist. For production schema changes, use Alembic migrations instead.
     Base.metadata.create_all(bind=engine)
+    _ensure_grade_columns()
 
 
 @app.get("/api/health")

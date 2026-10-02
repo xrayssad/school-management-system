@@ -1,4 +1,5 @@
 "use client";
+import { mediaUrl } from "@/lib/media";
 
 import { useEffect, useState } from "react";
 import { Megaphone, Paperclip } from "lucide-react";
@@ -18,7 +19,7 @@ export type Ann = {
 
 function mediaUrl(url?: string | null) {
   if (!url) return null;
-  return url.startsWith("http") ? url : `http://localhost:8000${url}`;
+  return url.startsWith("http") ? url : (mediaUrl(url) || "");
 }
 
 function isImage(a: Ann) {

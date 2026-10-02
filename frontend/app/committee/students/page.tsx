@@ -1,4 +1,5 @@
 "use client";
+import { mediaUrl } from "@/lib/media";
 
 import { useCallback, useEffect, useState } from "react";
 import { colors } from "@/lib/colors";
@@ -21,7 +22,7 @@ type Student = {
 
 function mediaUrl(url?: string | null) {
   if (!url) return null;
-  return url.startsWith("http") ? url : `http://localhost:8000${url}`;
+  return url.startsWith("http") ? url : (mediaUrl(url) || "");
 }
 
 export default function CommitteeStudentsPage() {

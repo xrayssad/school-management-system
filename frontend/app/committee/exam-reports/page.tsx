@@ -1,4 +1,5 @@
 "use client";
+import { mediaUrl } from "@/lib/media";
 
 import { useEffect, useMemo, useState } from "react";
 import { Download, Plus, Trash2 } from "lucide-react";
@@ -90,7 +91,7 @@ export default function ExamReportsPage() {
 
   function mediaUrl(url: string) {
     if (!url) return "";
-    return url.startsWith("http") ? url : `http://localhost:8000${url}`;
+    return url.startsWith("http") ? url : (mediaUrl(url) || "");
   }
 
   useEffect(() => {

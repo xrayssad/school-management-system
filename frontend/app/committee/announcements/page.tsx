@@ -1,4 +1,5 @@
 "use client";
+import { mediaUrl } from "@/lib/media";
 import MadrasaLoader from "@/components/MadrasaLoader";
 
 import { FormEvent, useEffect, useState } from "react";
@@ -96,7 +97,7 @@ export default function CommitteeAnnouncementsPage() {
 
   function attHref(url?: string | null) {
     if (!url) return null;
-    return url.startsWith("http") ? url : `http://localhost:8000${url}`;
+    return url.startsWith("http") ? url : (mediaUrl(url) || "");
   }
 
   if (loading) return <MadrasaLoader />;

@@ -1,4 +1,5 @@
 "use client";
+import { mediaUrl } from "@/lib/media";
 
 import { useEffect, useState } from "react";
 import { Download, FileText } from "lucide-react";
@@ -47,7 +48,7 @@ export default function ExamReportsDownload() {
       }
     } catch { /* fallback */ }
     window.open(
-      f.file_url.startsWith("http") ? f.file_url : `http://localhost:8000${f.file_url}`,
+      f.file_url.startsWith("http") ? f.file_url : (mediaUrl(f.file_url) || ""),
       "_blank"
     );
   }

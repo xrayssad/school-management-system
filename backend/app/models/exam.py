@@ -33,6 +33,8 @@ class Grade(Base):
     grade_letter: Mapped[str] = mapped_column(String(5), default="")
     remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
     graded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    status: Mapped[str] = mapped_column(String(20), default="submitted")
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     exam: Mapped["Exam"] = relationship(back_populates="grades")
 

@@ -1,4 +1,5 @@
 "use client";
+import { mediaUrl } from "@/lib/media";
 
 import MadrasaLoader from "@/components/MadrasaLoader";
 
@@ -21,7 +22,7 @@ type Item = {
 };
 
 function fileHref(url: string) {
-  return url.startsWith("http") ? url : `http://localhost:8000${url}`;
+  return url.startsWith("http") ? url : (mediaUrl(url) || "");
 }
 
 const TYPE_LABEL: Record<string, string> = {
