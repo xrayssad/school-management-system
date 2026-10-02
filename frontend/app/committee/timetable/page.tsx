@@ -3,21 +3,13 @@
 import MadrasaLoader from "@/components/MadrasaLoader";
 
 import { allClasses, CLASS_ORDER } from "@/lib/classes";
+import { formatSchoolDay, SCHOOL_DAYS } from "@/lib/school-days";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Calendar, Plus, CheckCircle, Clock } from "lucide-react";
 import { committeeApi } from "@/lib/api";
 import type { SchoolClass, SubjectItem, TeacherItem, CommitteeTimetableEntry } from "@/lib/types";
 import { colors } from "@/lib/colors";
-
-const DAYS = [
-  { value: 0, label: "Jumatatu" },
-  { value: 1, label: "Jumanne" },
-  { value: 2, label: "Jumatano" },
-  { value: 3, label: "Alhamisi" },
-  // Ijumaa — hakuna masomo
-  { value: 5, label: "Jumamosi" },
-];
 
 export default function CommitteeTimetablePage() {
   const [items, setItems] = useState<CommitteeTimetableEntry[]>([]);
@@ -64,10 +56,7 @@ export default function CommitteeTimetablePage() {
 
   const visible = useMemo(() => {
     if (dayFilter === "all") return items;
-    return items.filter((i) => {
-      const d = DAYS.find((x) => x.label === i.day_name);
-      return d?.value === dayFilter;
-    });
+    return items.filter((i) => Number(i.day_of_week) === dayFilter);
   }, [items, dayFilter]);
 
   async function handleCreate(event: FormEvent) {
@@ -140,7 +129,9 @@ export default function CommitteeTimetablePage() {
         </div>
         <form onSubmit={handleCreate} className="grid gap-3 md:grid-cols-2">
           <select value={dayOfWeek} onChange={(e) => setDayOfWeek(e.target.value)} className="rounded-lg border px-3 py-2.5 text-sm" style={{ borderColor: colors.line, backgroundColor: colors.soft }}>
-            {DAYS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+            {SCHOOL_DAYS.map((d) => (
+              <option key={d.value} value={d.value}>{d.j} {d.label}</option>
+            ))}
           </select>
           <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)} className="rounded-lg border px-3 py-2.5 text-sm" style={{ borderColor: colors.line, backgroundColor: colors.soft }} required>
             <option value="">Somo</option>
@@ -164,9 +155,9 @@ export default function CommitteeTimetablePage() {
 
       <div className="mb-3 flex flex-wrap gap-1.5">
         <button type="button" onClick={() => setDayFilter("all")} className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: dayFilter === "all" ? colors.primary : colors.soft, color: dayFilter === "all" ? "#fff" : colors.primary }}>Zote</button>
-        {DAYS.map((d) => (
+        {SCHOOL_DAYS.map((d) => (
           <button key={d.value} type="button" onClick={() => setDayFilter(d.value)} className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: dayFilter === d.value ? colors.primary : colors.soft, color: dayFilter === d.value ? "#fff" : colors.primary }}>
-            {d.label}
+            {d.j}
           </button>
         ))}
       </div>
@@ -196,7 +187,7 @@ export default function CommitteeTimetablePage() {
               <tbody>
                 {visible.map((item) => (
                   <tr key={item.id} className="border-t" style={{ borderColor: colors.line }}>
-                    <td className="px-4 py-3">{item.day_name}</td>
+                    <td className="px-4 py-3">{formatSchoolDay(item.day_of_week, item.day_name)}</td>
                     <td className="px-4 py-3" style={{ color: colors.stone }}>{item.start_time}–{item.end_time}</td>
                     <td className="px-4 py-3">{item.subject_name}</td>
                     <td className="px-4 py-3">{item.teacher_name}</td>

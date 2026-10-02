@@ -3,18 +3,9 @@
 import { useEffect, useState } from "react";
 import { colors } from "@/lib/colors";
 import MadrasaLoader from "@/components/MadrasaLoader";
+import { formatSchoolDay } from "@/lib/school-days";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-
-const DAY_NAMES = [
-  "Jumatatu",
-  "Jumanne",
-  "Jumatano",
-  "Alhamisi",
-  "Ijumaa",
-  "Jumamosi",
-  "Jumapili",
-];
 
 type Entry = {
   id: string;
@@ -26,19 +17,6 @@ type Entry = {
   subject_name?: string;
   status?: string;
 };
-
-function dayText(e: Entry): string {
-  if (e.day_label) return e.day_label;
-  if (typeof e.day_of_week === "number") {
-    return DAY_NAMES[e.day_of_week] ?? String(e.day_of_week);
-  }
-  if (typeof e.day_of_week === "string" && e.day_of_week.trim() !== "") {
-    const n = Number(e.day_of_week);
-    if (!Number.isNaN(n) && n >= 0 && n <= 6) return DAY_NAMES[n];
-    return e.day_of_week;
-  }
-  return "—";
-}
 
 export default function TeacherSchedulePage() {
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -88,7 +66,7 @@ export default function TeacherSchedulePage() {
           <tbody>
             {entries.map((e) => (
               <tr key={e.id} className="border-t" style={{ borderColor: colors.line }}>
-                <td className="px-3 py-2">{dayText(e)}</td>
+                <td className="px-3 py-2">{formatSchoolDay(e.day_of_week, e.day_label)}</td>
                 <td>
                   {e.start_time}–{e.end_time}
                 </td>

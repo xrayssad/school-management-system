@@ -5,6 +5,7 @@ import MadrasaLoader from "@/components/MadrasaLoader";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { colors } from "@/lib/colors";
+import { formatSchoolDay } from "@/lib/school-days";
 
 type Entry = {
   id?: string;
@@ -64,7 +65,7 @@ export default function StudentTimetablePage() {
                 {e.subject_name || "Somo"}
               </p>
               <p style={{ color: colors.stone }}>
-                {e.day_label || e.day_of_week} · {e.start_time}–{e.end_time}
+                {formatSchoolDay(e.day_of_week, e.day_label)} · {e.start_time}–{e.end_time}
                 {e.teacher_name ? ` · ${e.teacher_name}` : ""}
               </p>
             </div>

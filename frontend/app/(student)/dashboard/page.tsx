@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { colors } from "@/lib/colors";
+import { formatSchoolDay } from "@/lib/school-days";
 import { useAuth } from "@/lib/auth-context";
 import MadrasaLoader from "@/components/MadrasaLoader";
 
@@ -176,7 +177,7 @@ export default function StudentDashboardPage() {
               <tbody>
                 {entries.slice(0, 12).map((e, i) => (
                   <tr key={i} className="border-t" style={{ borderColor: colors.line }}>
-                    <td className="py-2 pr-3">{e.day_label || String(e.day_of_week || "—")}</td>
+                    <td className="py-2 pr-3">{formatSchoolDay(e.day_of_week, e.day_label)}</td>
                     <td className="pr-3" style={{ color: colors.stone }}>
                       {[e.start_time, e.end_time].filter(Boolean).join(" – ") || "—"}
                     </td>

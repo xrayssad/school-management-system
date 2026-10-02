@@ -4,7 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_committee,  require_role
-from app.core.classes import FRIDAY_DAY_OF_WEEK
+from app.core.classes import FRIDAY_DAY_OF_WEEK, SCHOOL_DAY_OF_WEEK
 from app.core.security import hash_password as hash_password
 from app.db.session import get_db
 from app.models.user import User, UserRole, StudentProfile, TeacherProfile
@@ -358,8 +358,8 @@ def list_timetable(db: Session = Depends(get_db), _: User = Depends(require_comm
 @router.post("/timetable", response_model=TimetableOut, status_code=201)
 def create_timetable_entry(body: TimetableCreate, db: Session = Depends(get_db), _: User = Depends(require_committee)):
     Subject = _Subject()
-    if body.day_of_week == FRIDAY_DAY_OF_WEEK:
-        raise HTTPException(status_code=400, detail="Ijumaa hakuna masomo — chagua siku nyingine.")
+    if body.day_of_week == FRIDAY_DAY_OF_WEEK or body.day_of_week not in SCHOOL_DAY_OF_WEEK:
+        raise HTTPException(status_code=400, detail="Ijumaa hakuna masomo — chagua siku ya shule (J.1–J.6).")
     sub = db.get(Subject, body.subject_id)
     if not sub:
         raise HTTPException(status_code=404, detail="Somo halijapatikana.")
