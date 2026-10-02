@@ -1,6 +1,11 @@
-/** Absolute URL for /uploads/... ; rewrite localhost hosts for production. */
+const PROD_API = "https://madrasatulhabibielmustwafa-api.onrender.com/api";
+
 export function apiOrigin(): string {
-  const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+  const api =
+    process.env.NEXT_PUBLIC_API_URL ||
+    (typeof window !== "undefined" && window.location.hostname !== "localhost"
+      ? PROD_API
+      : "http://localhost:8000/api");
   return api.replace(/\/api\/?$/, "");
 }
 
@@ -14,7 +19,9 @@ export function mediaUrl(path?: string | null): string | null {
       if (u.hostname === "localhost" || u.hostname === "127.0.0.1") {
         return `${apiOrigin()}${u.pathname}${u.search}`;
       }
-    } catch { /* keep */ }
+    } catch {
+      /* keep */
+    }
     return p;
   }
   return `${apiOrigin()}${p.startsWith("/") ? p : `/${p}`}`;
