@@ -1,12 +1,14 @@
 "use client";
-import { mediaUrl } from "@/lib/media";
 
+import { mediaUrl } from "@/lib/media";
 import { useCallback, useEffect, useState } from "react";
 import { colors } from "@/lib/colors";
 import { allClasses } from "@/lib/classes";
 import MadrasaLoader from "@/components/MadrasaLoader";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+const API =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "https://madrasatulhabibielmustwafa-api.onrender.com/api";
 
 type Student = {
   user_id: string;
@@ -20,10 +22,6 @@ type Student = {
   is_active?: boolean;
 };
 
-function avatarUrl(url?: string | null) {
-  return mediaUrl(url);
-}
-
 export default function CommitteeStudentsPage() {
   const classOptions = allClasses();
   const [students, setStudents] = useState<Student[]>([]);
@@ -31,15 +29,17 @@ export default function CommitteeStudentsPage() {
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
   const [csv, setCsv] = useState<File | null>(null);
   const [zip, setZip] = useState<File | null>(null);
   const [uploadMsg, setUploadMsg] = useState("");
   const [uploadErr, setUploadErr] = useState("");
-  const [uploadResult, setUploadResult] = useState<any>(null);
   const [busy, setBusy] = useState(false);
 
   const token = () => localStorage.getItem("madrasa_token");
+  const headers = () => ({
+    Authorization: `Bearer ${token()}`,
+    "Content-Type": "application/json",
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,13 +53,15 @@ export default function CommitteeStudentsPage() {
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        const detail = typeof body.detail === "string" ? body.detail : `HTTP ${res.status}`;
-        throw new Error(detail || "Imeshindikana kupakia wanafunzi");
+        throw new Error(
+          typeof body.detail === "string" ? body.detail : `HTTP ${res.status}`
+        );
       }
       const data = await res.json();
       setStudents(Array.isArray(data) ? data : data.students || []);
-    } catch (e: any) {
-      setError(e.message || "Imeshindikana");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Imeshindikana");
+      setStudents([]);
     } finally {
       setLoading(false);
     }
@@ -69,28 +71,55 @@ export default function CommitteeStudentsPage() {
     load();
   }, [load]);
 
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || "https://madrasatulhabibielmustwafa-api.onrender.com/api";
-  const authHeaders = () => ({
-    Authorization: `Bearer ${localStorage.getItem("madrasa_token")}`,
-    "Content-Type": "application/json",
-  });
   async function blockStudent(id: string) {
-    await fetch(`${apiBase}/committee/students/${id}/block`, { method: "POST", headers: authHeaders() });
+    const res = await fetch(`${API}/committee/students/${id}/block`, {
+      method: "POST",
+      headers: headers(),
+    });
+    if (!res.ok) alert("Imeshindikana kuzuia");
     await load();
   }
+
   async function unblockStudent(id: string) {
-    await fetch(`${apiBase}/committee/students/${id}/unblock`, { method: "POST", headers: authHeaders() });
+    const res = await fetch(`${API}/committee/students/${id}/unblock`, {
+      method: "POST",
+      headers: headers(),
+    });
+    if (!res.ok) alert("Imeshindikana kufungua");
     await load();
   }
+
   async function deleteStudent(id: string) {
-    if (!confirm("Futa akaunti ya mwanafunzi kabisa?")) return;
-    await fetch(`${apiBase}/committee/students/${id}`, { method: "DELETE", headers: authHeaders() });
+    if (!confirm("Futa akaunti ya mwanafunzi kabisa? Haitaweza kurejeshwa.")) return;
+    const res = await fetch(`${API}/committee/students/${id}`, {
+      method: "DELETE",
+      headers: headers(),
+    });
+    if (!res.ok) alert("Imeshindikana kufuta");
     await load();
   }
-  async function saveStudent(id: string, body: Record<string, unknown>) {
-    const res = await fetch(`${apiBase}/committee/students/${id}`, {
+
+  async function editStudent(s: Student) {
+    const full_name = prompt("Jina kamili", s.full_name || "");
+    if (full_name === null) return;
+    const class_name = prompt("Darasa (mf. Darasa la 1)", s.class_name || "");
+    if (class_name === null) return;
+    const student_code = prompt("Namba (mf. MHM.2026/001)", s.student_code || "");
+    if (student_code === null) return;
+    const phone = prompt("Simu", s.phone || "");
+    if (phone === null) return;
+    const password = prompt("Nenosiri jipya (acha tupu kama hubadilishi)", "");
+    if (password === null) return;
+    const body: Record<string, string> = {
+      full_name: full_name.trim(),
+      class_name: class_name.trim(),
+      student_code: student_code.trim(),
+      phone: phone.trim(),
+    };
+    if (password.trim()) body.password = password.trim();
+    const res = await fetch(`${API}/committee/students/${s.user_id}`, {
       method: "PATCH",
-      headers: authHeaders(),
+      headers: headers(),
       body: JSON.stringify(body),
     });
     if (!res.ok) {
@@ -101,11 +130,9 @@ export default function CommitteeStudentsPage() {
     await load();
   }
 
-
   async function upload() {
     setUploadMsg("");
     setUploadErr("");
-    setUploadResult(null);
     if (!csv) {
       setUploadErr("Chagua faili CSV");
       return;
@@ -122,17 +149,17 @@ export default function CommitteeStudentsPage() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const d = body.detail;
         setUploadErr(
-          typeof d === "string" ? d : JSON.stringify(d || body) || "Imeshindikana"
+          typeof body.detail === "string" ? body.detail : "Imeshindikana kupakia"
         );
         return;
       }
-      setUploadResult(body);
-      setUploadMsg(`Imeundwa: ${body.created ?? 0}, ruka: ${body.skipped ?? 0}`);
+      setUploadMsg(
+        `Imeundwa: ${body.created ?? 0}, ruka: ${body.skipped ?? 0}. Namba: MHM.2026/001 (slash).`
+      );
       await load();
-    } catch (e: any) {
-      setUploadErr(e.message || "Failed to fetch");
+    } catch (e: unknown) {
+      setUploadErr(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(false);
     }
@@ -146,86 +173,62 @@ export default function CommitteeStudentsPage() {
         Wanafunzi
       </h1>
       <p className="mt-1 text-sm" style={{ color: colors.stone }}>
-        Orodha ya waliosajiliwa · pakia CSV kuongeza wengi
+        Orodha · CSV (namba MHM.2026/001) · Hariri / Zuia / Futa
       </p>
 
-      {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
-
       <div
-        className="mt-4 space-y-3 rounded-xl border bg-white p-4"
+        className="mt-4 rounded-xl border bg-white p-4 text-sm"
         style={{ borderColor: colors.line }}
       >
-        <p className="text-sm font-semibold" style={{ color: colors.primary }}>
-          Pakia CSV
+        <p className="font-medium" style={{ color: colors.primary }}>
+          Pakia CSV (wengi kwa wakati mmoja)
         </p>
-        <p className="text-xs" style={{ color: colors.stone }}>
-          Headers: full_name,email,class_name,phone,password,student_code,guardian_name,photo_filename · Namba: MHM.2026/001 (slash) · password chaguo-msingi Student@123 · ZIP+photo_filename kwa picha
+        <p className="mt-1 text-xs" style={{ color: colors.stone }}>
+          Headers: full_name,email,class_name,phone,password,student_code,guardian_name,photo_filename
+          · Namba: MHM.2026/001 (slash) · password chaguo-msingi Student@123 · ZIP + photo_filename
         </p>
-        <div className="flex flex-wrap gap-4">
-          <div>
-            <label className="text-xs font-medium">CSV</label>
-            <input
-              type="file"
-              accept=".csv,text/csv"
-              onChange={(e) => setCsv(e.target.files?.[0] || null)}
-              className="mt-1 block text-sm"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium">Zip picha (si lazima)</label>
-            <input
-              type="file"
-              accept=".zip"
-              onChange={(e) => setZip(e.target.files?.[0] || null)}
-              className="mt-1 block text-sm"
-            />
-          </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <input type="file" accept=".csv,text/csv" onChange={(e) => setCsv(e.target.files?.[0] || null)} />
+          <input type="file" accept=".zip" onChange={(e) => setZip(e.target.files?.[0] || null)} />
+          <button
+            type="button"
+            disabled={busy}
+            onClick={upload}
+            className="rounded-lg px-3 py-2 text-sm font-medium text-white"
+            style={{ backgroundColor: colors.primary }}
+          >
+            {busy ? "Inapakia…" : "Pakia CSV"}
+          </button>
         </div>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={upload}
-          className="rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-          style={{ backgroundColor: colors.primary }}
-        >
-          {busy ? "…" : "Pakia CSV"}
-        </button>
-        {uploadMsg && (
-          <p className="text-sm" style={{ color: colors.primary }}>
-            {uploadMsg}
-          </p>
-        )}
-        {uploadErr && <p className="text-sm text-red-700">{uploadErr}</p>}
-        {uploadResult?.errors?.length > 0 && (
-          <ul className="max-h-32 list-disc overflow-y-auto pl-4 text-xs text-red-800">
-            {uploadResult.errors.map((e: string, i: number) => (
-              <li key={i}>{e}</li>
-            ))}
-          </ul>
-        )}
+        {uploadMsg && <p className="mt-2 text-xs" style={{ color: colors.primary }}>{uploadMsg}</p>}
+        {uploadErr && <p className="mt-2 text-xs text-red-600">{uploadErr}</p>}
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Tafuta jina, email, namba…"
-          className="rounded-lg border px-3 py-2 text-sm"
-          style={{ borderColor: colors.line, minWidth: 200 }}
-        />
-        <select
-          value={classFilter}
-          onChange={(e) => setClassFilter(e.target.value)}
-          className="rounded-lg border px-3 py-2 text-sm"
-          style={{ borderColor: colors.line }}
-        >
-          <option value="">Madarasa yote</option>
-          {classOptions.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
+      <div className="mt-4 flex flex-wrap items-end gap-2">
+        <label className="text-sm">
+          Darasa
+          <select
+            className="mt-1 block rounded-lg border px-2 py-2 text-sm"
+            style={{ borderColor: colors.line }}
+            value={classFilter}
+            onChange={(e) => setClassFilter(e.target.value)}
+          >
+            <option value="">Yote</option>
+            {classOptions.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm">
+          Tafuta
+          <input
+            className="mt-1 block rounded-lg border px-2 py-2 text-sm"
+            style={{ borderColor: colors.line }}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Jina / namba"
+          />
+        </label>
         <button
           type="button"
           onClick={load}
@@ -236,11 +239,10 @@ export default function CommitteeStudentsPage() {
         </button>
       </div>
 
-      <div
-        className="mt-4 overflow-x-auto rounded-xl border bg-white"
-        style={{ borderColor: colors.line }}
-      >
-        <table className="w-full min-w-[720px] text-left text-sm">
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+
+      <div className="mt-4 overflow-x-auto rounded-xl border bg-white" style={{ borderColor: colors.line }}>
+        <table className="w-full min-w-[900px] text-left text-sm">
           <thead>
             <tr className="text-xs" style={{ color: colors.stone }}>
               <th className="px-3 py-2">Picha</th>
@@ -249,11 +251,12 @@ export default function CommitteeStudentsPage() {
               <th>Darasa</th>
               <th>Mawasiliano</th>
               <th>Hali</th>
+              <th className="px-3 py-2">Vitendo</th>
             </tr>
           </thead>
           <tbody>
             {students.map((s) => {
-              const img = avatarUrl(s.avatar_url);
+              const img = mediaUrl(s.avatar_url);
               return (
                 <tr key={s.user_id || s.student_code} className="border-t" style={{ borderColor: colors.line }}>
                   <td className="px-3 py-2">
@@ -276,13 +279,49 @@ export default function CommitteeStudentsPage() {
                     {[s.email, s.phone].filter(Boolean).join(" · ")}
                   </td>
                   <td className="text-xs">
-                    {s.promotion_status === "repeated"
-                      ? "Amerudishwa"
-                      : s.promotion_status === "promoted"
-                        ? "Amepandishwa"
-                        : s.is_active === false
-                          ? "Si active"
-                          : "—"}
+                    {s.is_active === false
+                      ? "Imezuiwa"
+                      : s.promotion_status === "repeated"
+                        ? "Amerudishwa"
+                        : s.promotion_status === "promoted"
+                          ? "Amepandishwa"
+                          : "Active"}
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex flex-wrap gap-1">
+                      <button
+                        type="button"
+                        className="rounded border px-2 py-1 text-xs"
+                        style={{ borderColor: colors.primary, color: colors.primary }}
+                        onClick={() => editStudent(s)}
+                      >
+                        Hariri
+                      </button>
+                      {s.is_active === false ? (
+                        <button
+                          type="button"
+                          className="rounded border px-2 py-1 text-xs"
+                          onClick={() => unblockStudent(s.user_id)}
+                        >
+                          Fungua
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="rounded border px-2 py-1 text-xs text-amber-800"
+                          onClick={() => blockStudent(s.user_id)}
+                        >
+                          Zuia
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="rounded border border-red-300 px-2 py-1 text-xs text-red-700"
+                        onClick={() => deleteStudent(s.user_id)}
+                      >
+                        Futa
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -290,9 +329,7 @@ export default function CommitteeStudentsPage() {
           </tbody>
         </table>
         {!students.length && (
-          <p className="p-4 text-sm" style={{ color: colors.stone }}>
-            Hakuna wanafunzi.
-          </p>
+          <p className="p-4 text-sm" style={{ color: colors.stone }}>Hakuna wanafunzi.</p>
         )}
       </div>
     </div>
