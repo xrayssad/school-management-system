@@ -17,7 +17,7 @@ router = APIRouter(prefix="/committee/fees", tags=["committee-fees"])
 require_committee = require_role(UserRole.committee, UserRole.admin)
 
 def _ensure_fees_table(db: Session) -> None:
-    """Create student_fees if missing (production DB may lag models)."""
+    """Ensure student_fees exists and has columns code expects."""
     db.execute(text("""
         CREATE TABLE IF NOT EXISTS student_fees (
             id VARCHAR(36) PRIMARY KEY,
@@ -34,15 +34,29 @@ def _ensure_fees_table(db: Session) -> None:
             created_at TIMESTAMP NULL
         )
     """))
-    db.commit()
+    # Add missing columns on existing tables (Postgres)
+    for col, typ in [
+        ("student_id", "VARCHAR(36)"),
+        ("student_user_id", "VARCHAR(36)"),
+        ("year", "VARCHAR(10)"),
+        ("month", "VARCHAR(10)"),
+        ("amount", "NUMERIC(12,2) DEFAULT 0"),
+        ("amount_paid", "NUMERIC(12,2) DEFAULT 0"),
+        ("status", "VARCHAR(20) DEFAULT 'unpaid'"),
+        ("paid_at", "TIMESTAMP NULL"),
+        ("note", "TEXT"),
+        ("updated_by", "VARCHAR(36)"),
+        ("created_at", "TIMESTAMP"),
+    ]:
+        try:
+            db.execute(text(f"ALTER TABLE student_fees ADD COLUMN IF NOT EXISTS {col} {typ}"))
+        except Exception:
+            db.rollback()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
 
-
-
-
-MONTHS_SW = [
-    "", "Januari", "Februari", "Machi", "Aprili", "Mei", "Juni",
-    "Julai", "Agosti", "Septemba", "Oktoba", "Novemba", "Desemba",
-]
 
 
 class SetAmountBody(BaseModel):
