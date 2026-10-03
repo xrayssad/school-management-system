@@ -47,10 +47,7 @@ export default function ExamReportsDownload() {
         return;
       }
     } catch { /* fallback */ }
-    window.open(
-      f.file_url.startsWith("http") ? f.file_url : (mediaUrl(f.file_url) || ""),
-      "_blank"
-    );
+    window.open(mediaUrl(f.file_url) || "", "_blank");
   }
 
   return (

@@ -17,10 +17,7 @@ export type Ann = {
   teacher_name?: string | null;
 };
 
-function mediaUrl(url?: string | null) {
-  if (!url) return null;
-  return url.startsWith("http") ? url : (mediaUrl(url) || "");
-}
+
 
 function isImage(a: Ann) {
   const u = (a.attachment_url || "").toLowerCase();

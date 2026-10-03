@@ -20,9 +20,8 @@ type Student = {
   is_active?: boolean;
 };
 
-function mediaUrl(url?: string | null) {
-  if (!url) return null;
-  return url.startsWith("http") ? url : (mediaUrl(url) || "");
+function avatarUrl(url?: string | null) {
+  return mediaUrl(url);
 }
 
 export default function CommitteeStudentsPage() {
@@ -225,7 +224,7 @@ export default function CommitteeStudentsPage() {
           </thead>
           <tbody>
             {students.map((s) => {
-              const img = mediaUrl(s.avatar_url);
+              const img = avatarUrl(s.avatar_url);
               return (
                 <tr key={s.user_id || s.student_code} className="border-t" style={{ borderColor: colors.line }}>
                   <td className="px-3 py-2">

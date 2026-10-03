@@ -89,9 +89,8 @@ export default function ExamReportsPage() {
     return localStorage.getItem("madrasa_token");
   }
 
-  function mediaUrl(url: string) {
-    if (!url) return "";
-    return url.startsWith("http") ? url : (mediaUrl(url) || "");
+  function pdfHref(url?: string | null) {
+    return mediaUrl(url) || "";
   }
 
   useEffect(() => {
@@ -271,7 +270,7 @@ export default function ExamReportsPage() {
                   {p.term ? ` · ${p.term}` : ""}
                 </span>
                 <a
-                  href={mediaUrl(p.file_url)}
+                  href={pdfHref(p.file_url)}
                   target="_blank"
                   rel="noreferrer"
                   className="font-semibold underline"

@@ -96,8 +96,7 @@ export default function CommitteeAnnouncementsPage() {
   }
 
   function attHref(url?: string | null) {
-    if (!url) return null;
-    return url.startsWith("http") ? url : (mediaUrl(url) || "");
+    return mediaUrl(url);
   }
 
   if (loading) return <MadrasaLoader />;

@@ -116,19 +116,23 @@ def compute_and_apply(
         "AND COALESCE(g.status, 'published') = 'published'" if published_only else ""
     )
 
-    rows = db.execute(
-        text(
-            f"""
+    select_sql = """
             SELECT sp.id AS profile_id, sp.student_code, sp.class_name, u.full_name,
                    g.marks_obtained, e.title AS exam_title, e.total_marks
             FROM grades g
             JOIN student_profiles sp ON sp.id = g.student_id
             JOIN users u ON u.id = sp.user_id
             JOIN exams e ON e.id = g.exam_id
-            WHERE 1=1 {status_filter}
-            """
-        )
-    ).mappings().all()
+            WHERE 1=1
+    """
+    if published_only:
+        try:
+            rows = db.execute(text(f"{select_sql} {status_filter}")).mappings().all()
+        except Exception:
+            db.rollback()
+            rows = db.execute(text(select_sql)).mappings().all()
+    else:
+        rows = db.execute(text(select_sql)).mappings().all()
 
     term_l = (term or "").lower()
     term_rows = [
@@ -193,39 +197,44 @@ def compute_and_apply(
                 promoted += 1
 
         if apply:
-            if status == "promoted" and new_class:
-                db.execute(
-                    text(
-                        """
-                        UPDATE student_profiles SET
-                          promotion_status = :st,
-                          promotion_term = :term,
-                          promotion_note = :note,
-                          class_name = :new_cn
-                        WHERE id = :id
-                        """
-                    ),
-                    {
-                        "st": status,
-                        "term": term,
-                        "note": note,
-                        "new_cn": new_class,
-                        "id": pid,
-                    },
-                )
-            else:
-                db.execute(
-                    text(
-                        """
-                        UPDATE student_profiles SET
-                          promotion_status = :st,
-                          promotion_term = :term,
-                          promotion_note = :note
-                        WHERE id = :id
-                        """
-                    ),
-                    {"st": status, "term": term, "note": note, "id": pid},
-                )
+            try:
+                if status == "promoted" and new_class:
+                    db.execute(
+                        text(
+                            """
+                            UPDATE student_profiles SET
+                              promotion_status = :st,
+                              promotion_term = :term,
+                              promotion_note = :note,
+                              class_name = :new_cn
+                            WHERE id = :id
+                            """
+                        ),
+                        {
+                            "st": status,
+                            "term": term,
+                            "note": note,
+                            "new_cn": new_class,
+                            "id": pid,
+                        },
+                    )
+                else:
+                    db.execute(
+                        text(
+                            """
+                            UPDATE student_profiles SET
+                              promotion_status = :st,
+                              promotion_term = :term,
+                              promotion_note = :note
+                            WHERE id = :id
+                            """
+                        ),
+                        {"st": status, "term": term, "note": note, "id": pid},
+                    )
+            except Exception:
+                db.rollback()
+                status = "skipped"
+                new_class = None
 
         items.append(
             {

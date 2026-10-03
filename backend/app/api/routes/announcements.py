@@ -10,6 +10,59 @@ from app.schemas.communication import AnnouncementCreate
 
 router = APIRouter(prefix="/announcements", tags=["announcements"])
 
+_ATTACH_COLS = "attachment_url, attachment_name, attachment_type, audience"
+_BASE_COLS = "id, title, message, teacher_id, subject_id, class_name, priority, created_at"
+
+
+def relative_media_path(url: str | None) -> str | None:
+    """Strip origin (localhost/127.0.0.1/prod) so the frontend can rebuild the host."""
+    if not url:
+        return None
+    value = str(url).strip()
+    if not value:
+        return None
+    if value.startswith("http://") or value.startswith("https://"):
+        from urllib.parse import urlparse
+
+        parsed = urlparse(value)
+        path = parsed.path or ""
+        return f"{path}?{parsed.query}" if parsed.query else path
+    return value if value.startswith("/") else f"/{value}"
+
+
+def _fetch_rows(db: Session) -> list:
+    try:
+        return (
+            db.execute(
+                text(
+                    f"""
+                    SELECT {_BASE_COLS}, {_ATTACH_COLS}
+                    FROM announcements
+                    ORDER BY created_at DESC NULLS LAST
+                    LIMIT 100
+                    """
+                )
+            )
+            .mappings()
+            .all()
+        )
+    except Exception:
+        db.rollback()
+        return (
+            db.execute(
+                text(
+                    f"""
+                    SELECT {_BASE_COLS}
+                    FROM announcements
+                    ORDER BY created_at DESC NULLS LAST
+                    LIMIT 100
+                    """
+                )
+            )
+            .mappings()
+            .all()
+        )
+
 
 @router.get("")
 def list_announcements(
@@ -18,17 +71,7 @@ def list_announcements(
     current_user: User = Depends(get_current_user),
 ):
     """Return announcements including attachment_* from DB (raw SQL)."""
-    rows = db.execute(
-        text(
-            """
-            SELECT id, title, message, teacher_id, subject_id, class_name, priority,
-                   attachment_url, attachment_name, attachment_type, audience, created_at
-            FROM announcements
-            ORDER BY created_at DESC NULLS LAST
-            LIMIT 100
-            """
-        )
-    ).mappings().all()
+    rows = _fetch_rows(db)
 
     target_class = class_name
     if not target_class and getattr(current_user, "student_profile", None):
@@ -64,7 +107,7 @@ def list_announcements(
                 "subject_id": d.get("subject_id"),
                 "class_name": d.get("class_name"),
                 "priority": d.get("priority") or "normal",
-                "attachment_url": d.get("attachment_url"),
+                "attachment_url": relative_media_path(d.get("attachment_url")),
                 "attachment_name": d.get("attachment_name"),
                 "attachment_type": d.get("attachment_type"),
                 "audience": d.get("audience") or "all",
@@ -94,7 +137,7 @@ def create_announcement(
         "subject_id": getattr(a, "subject_id", None),
         "class_name": getattr(a, "class_name", None),
         "priority": a.priority,
-        "attachment_url": getattr(a, "attachment_url", None),
+        "attachment_url": relative_media_path(getattr(a, "attachment_url", None)),
         "attachment_name": getattr(a, "attachment_name", None),
         "attachment_type": getattr(a, "attachment_type", None),
         "audience": getattr(a, "audience", None) or "all",

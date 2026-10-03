@@ -22,7 +22,7 @@ type Item = {
 };
 
 function fileHref(url: string) {
-  return url.startsWith("http") ? url : (mediaUrl(url) || "");
+  return mediaUrl(url) || "";
 }
 
 const TYPE_LABEL: Record<string, string> = {

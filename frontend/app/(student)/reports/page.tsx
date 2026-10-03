@@ -28,7 +28,7 @@ export default function StudentReportsPage() {
           <li key={p.id} className="flex justify-between gap-2 rounded-lg border bg-white px-4 py-3 text-sm" style={{ borderColor: colors.line }}>
             <span>{p.title}{p.term ? ` · ${p.term}` : ""}</span>
             <a className="font-semibold underline" style={{ color: colors.primary }}
-              href={p.file_url?.startsWith("http") ? p.file_url : (mediaUrl(p.file_url) || "")}
+              href={mediaUrl(p.file_url) || ""}
               target="_blank" rel="noreferrer">Pakua</a>
           </li>
         ))}

@@ -17,10 +17,32 @@ class ApplyIn(BaseModel):
 
 @router.get("/preview")
 def preview(term: str = Query("Muhula 2"), db: Session = Depends(get_db), _: User = Depends(require_committee)):
-    return compute_and_apply(db, term=term, apply=False)
+    try:
+        return compute_and_apply(db, term=term, apply=False)
+    except Exception as e:
+        db.rollback()
+        return {
+            "term": term,
+            "applied": False,
+            "class_order": [],
+            "summary": {"repeated": 0, "promoted": 0, "graduated": 0, "total": 0},
+            "items": [],
+            "error": str(e),
+        }
 
 
 @router.post("/apply")
 def apply(body: ApplyIn, db: Session = Depends(get_db), _: User = Depends(require_committee)):
     """Mwongozo wa mkono — kawaida hutokea otomatiki baada ya kuidhinisha matokeo."""
-    return compute_and_apply(db, term=body.term, apply=True)
+    try:
+        return compute_and_apply(db, term=body.term, apply=True)
+    except Exception as e:
+        db.rollback()
+        return {
+            "term": body.term,
+            "applied": False,
+            "class_order": [],
+            "summary": {"repeated": 0, "promoted": 0, "graduated": 0, "total": 0},
+            "items": [],
+            "error": str(e),
+        }

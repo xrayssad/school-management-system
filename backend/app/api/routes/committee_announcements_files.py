@@ -7,6 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_role
+from app.api.routes.announcements import relative_media_path
 from app.db.session import get_db
 from app.models.user import User, UserRole
 
@@ -145,10 +146,14 @@ def list_committee(db: Session = Depends(get_db), _: User = Depends(require_comm
         rows = db.execute(
             text("SELECT * FROM announcements ORDER BY created_at DESC NULLS LAST LIMIT 100")
         ).mappings().all()
-        return [dict(r) for r in rows]
+        out = [dict(r) for r in rows]
     except Exception:
         db.rollback()
         rows = db.execute(
             text("SELECT id, title, message, priority FROM announcements LIMIT 100")
         ).mappings().all()
-        return [dict(r) for r in rows]
+        out = [dict(r) for r in rows]
+    for item in out:
+        if item.get("attachment_url"):
+            item["attachment_url"] = relative_media_path(item["attachment_url"])
+    return out

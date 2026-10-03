@@ -33,23 +33,46 @@ def grades_board(
         where.append("COALESCE(g.status, 'submitted') = :st")
         params["st"] = status_filter
 
-    rows = db.execute(
-        text(f"""
-            SELECT g.id AS grade_id, g.marks_obtained, g.grade_letter, g.status,
-                   g.remarks, g.graded_at, g.published_at,
-                   e.id AS exam_id, e.title AS exam_title, e.class_name, e.total_marks,
-                   s.name AS subject_name, s.id AS subject_id,
-                   sp.student_code, u.full_name
-            FROM grades g
-            JOIN exams e ON e.id = g.exam_id
-            LEFT JOIN subjects s ON s.id = e.subject_id
-            JOIN student_profiles sp ON sp.id = g.student_id
-            JOIN users u ON u.id = sp.user_id
-            WHERE {' AND '.join(where)}
-            ORDER BY e.class_name, s.name, u.full_name
-        """),
-        params,
-    ).mappings().all()
+    base_sql = f"""
+        FROM grades g
+        JOIN exams e ON e.id = g.exam_id
+        LEFT JOIN subjects s ON s.id = e.subject_id
+        JOIN student_profiles sp ON sp.id = g.student_id
+        JOIN users u ON u.id = sp.user_id
+    """
+
+    def _query(grade_cols: str, extra_where: list[str]) -> list:
+        return (
+            db.execute(
+                text(
+                    f"""
+                    SELECT g.id AS grade_id, g.marks_obtained, g.grade_letter,
+                           {grade_cols}
+                           g.remarks, g.graded_at,
+                           e.id AS exam_id, e.title AS exam_title, e.class_name, e.total_marks,
+                           s.name AS subject_name, s.id AS subject_id,
+                           sp.student_code, u.full_name
+                    {base_sql}
+                    WHERE {' AND '.join(extra_where)}
+                    ORDER BY e.class_name, s.name, u.full_name
+                    """
+                ),
+                params,
+            )
+            .mappings()
+            .all()
+        )
+
+    has_status = True
+    try:
+        rows = _query("g.status, g.published_at,", where)
+    except Exception:
+        db.rollback()
+        has_status = False
+        fallback_where = ["1=1"]
+        if class_name:
+            fallback_where.append("e.class_name = :cn")
+        rows = _query("'submitted' AS status, NULL AS published_at,", fallback_where)
 
     # group by class -> subject/exam
     by_class: dict = {}
@@ -86,7 +109,12 @@ def grades_board(
                 "exams": list(exams.values()),
             }
         )
-    return {"status_filter": status_filter, "classes": out, "total_grades": len(rows)}
+    return {
+        "status_filter": status_filter if has_status else "all",
+        "status_filter_applied": has_status,
+        "classes": out,
+        "total_grades": len(rows),
+    }
 
 
 @router.post("/exam/{exam_id}/publish")
@@ -96,17 +124,24 @@ def publish_exam(
     user: User = Depends(require_committee),
 ):
     """Chapisha matokeo ya mtihani mmoja (somo + darasa) — kama baada ya CSV."""
-    n = db.execute(
-        text("""
-            UPDATE grades SET
-              status = 'published',
-              published_at = NOW()
-            WHERE exam_id = :e
-              AND COALESCE(status, 'submitted') = 'submitted'
-        """),
-        {"e": exam_id},
-    ).rowcount
-    db.commit()
+    try:
+        n = db.execute(
+            text("""
+                UPDATE grades SET
+                  status = 'published',
+                  published_at = NOW()
+                WHERE exam_id = :e
+                  AND COALESCE(status, 'submitted') = 'submitted'
+            """),
+            {"e": exam_id},
+        ).rowcount
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        n = 0
+        publish_error = str(e)
+    else:
+        publish_error = None
 
     # promotion hook (optional)
     promo = None
@@ -116,7 +151,13 @@ def publish_exam(
     except Exception as e:
         promo = {"error": str(e)}
 
-    return {"ok": True, "published": n or 0, "exam_id": exam_id, "promotion": promo}
+    return {
+        "ok": publish_error is None,
+        "published": n or 0,
+        "exam_id": exam_id,
+        "promotion": promo,
+        "error": publish_error,
+    }
 
 
 @router.post("/publish-all-submitted")
@@ -136,12 +177,19 @@ def publish_all(
     if class_name:
         sql += " AND e.class_name = :cn"
         params["cn"] = class_name
-    n = db.execute(text(sql), params).rowcount
-    db.commit()
+    try:
+        n = db.execute(text(sql), params).rowcount
+        db.commit()
+        error = None
+    except Exception as e:
+        db.rollback()
+        n = 0
+        error = str(e)
     promo = None
     try:
         from app.services.promotion import compute_and_apply
         promo = compute_and_apply(db, term="Muhula 2", apply=True)
     except Exception as e:
+        db.rollback()
         promo = {"error": str(e)}
-    return {"ok": True, "published": n or 0, "promotion": promo}
+    return {"ok": error is None, "published": n or 0, "promotion": promo, "error": error}
