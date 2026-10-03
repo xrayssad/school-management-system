@@ -73,6 +73,53 @@ uploads_root.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(uploads_root)), name="uploads")
 
 app.add_middleware(GZipMiddleware, minimum_size=500)
+
+# --- CORS: always allow production frontend (even on 500) ---
+_CORS_ORIGINS = list(getattr(settings, "cors_origins", None) or [])
+for _o in (
+    "http://localhost:3000",
+    "https://madrasatulhabibielmustwafa-2.vercel.app",
+):
+    if _o not in _CORS_ORIGINS:
+        _CORS_ORIGINS.append(_o)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
+
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
+
+class ForceCorsMiddleware(BaseHTTPMiddleware):
+    """If an unhandled error skips CORSMiddleware headers, still allow browser."""
+    async def dispatch(self, request: Request, call_next):
+        origin = request.headers.get("origin") or ""
+        try:
+            response = await call_next(request)
+        except Exception:
+            response = Response(
+                content='{"detail":"Internal Server Error"}',
+                status_code=500,
+                media_type="application/json",
+            )
+        if origin and origin in _CORS_ORIGINS:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "Authorization,Content-Type,Accept,Origin"
+            response.headers["Vary"] = "Origin"
+        if request.method == "OPTIONS":
+            return Response(status_code=204, headers=dict(response.headers))
+        return response
+
+app.add_middleware(ForceCorsMiddleware)
+
 # CORS must be outermost (add last among middlewares) so 401/500 still get headers
 _cors = list(settings.cors_origins)
 for _o in (
@@ -81,14 +128,6 @@ for _o in (
 ):
     if _o not in _cors:
         _cors.append(_o)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_cors,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-)
 
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded

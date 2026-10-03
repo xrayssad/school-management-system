@@ -114,57 +114,94 @@ def list_by_class(
     db: Session = Depends(get_db),
     _: User = Depends(require_committee),
 ):
+    """Orodha ya wanafunzi + hali ya ada — haivunjiki hata fee table iko incomplete."""
     y = year or datetime.utcnow().year
     m = month or datetime.utcnow().month
-    if not (1 <= m <= 12):
+    if not (1 <= int(m) <= 12):
         m = datetime.utcnow().month
     try:
         _ensure_fees_table(db)
     except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+
+    try:
+        students = db.execute(
+            text(
+                """
+                SELECT sp.id AS student_id, sp.user_id, sp.student_code, sp.class_name,
+                       u.full_name, u.email
+                FROM student_profiles sp
+                JOIN users u ON u.id = sp.user_id
+                WHERE sp.class_name = :cn AND COALESCE(u.is_active, true) = true
+                ORDER BY u.full_name
+                """
+            ),
+            {"cn": class_name},
+        ).mappings().all()
+    except Exception as e:
         db.rollback()
-    students = db.execute(
-        text(
-            """
-            SELECT sp.id AS student_id, sp.user_id, sp.student_code, sp.class_name,
-                   u.full_name, u.email
-            FROM student_profiles sp
-            JOIN users u ON u.id = sp.user_id
-            WHERE sp.class_name = :cn AND u.is_active = true
-            ORDER BY u.full_name
-            """
-        ),
-        {"cn": class_name},
-    ).mappings().all()
+        raise HTTPException(status_code=500, detail=f"Imeshindikana kupakia wanafunzi: {e}") from e
 
     out = []
     for s in students:
-        fee = _fee_row(db, s["student_id"], y, m)
+        fee = None
+        try:
+            fee = _fee_row(db, s["student_id"], y, m)
+        except Exception:
+            try:
+                db.rollback()
+            except Exception:
+                pass
+            fee = None
+        amount = 0.0
+        amount_paid = 0.0
+        status = "unpaid"
+        paid_at = None
+        note = None
+        fee_id = None
+        if fee:
+            try:
+                amount = float(fee.get("amount") or 0)
+            except Exception:
+                amount = 0.0
+            try:
+                amount_paid = float(fee.get("amount_paid") or 0)
+            except Exception:
+                amount_paid = 0.0
+            status = (fee.get("status") or "unpaid")
+            paid_at = fee.get("paid_at")
+            note = fee.get("note")
+            fee_id = fee.get("id")
         out.append(
             {
                 "student_id": s["student_id"],
                 "user_id": s["user_id"],
-                "student_code": s["student_code"],
-                "class_name": s["class_name"],
-                "full_name": s["full_name"],
-                "email": s["email"],
+                "student_code": s.get("student_code"),
+                "class_name": s.get("class_name"),
+                "full_name": s.get("full_name"),
+                "email": s.get("email"),
                 "year": y,
                 "month": m,
-                "month_name": MONTHS_SW[m],
-                "amount": float(fee["amount"] or 0) if fee else 0,
-                "amount_paid": float((fee.get("amount_paid") if fee else 0) or 0),
-                "status": (fee["status"] if fee else "unpaid") or "unpaid",
-                "paid_at": fee["paid_at"] if fee else None,
-                "note": fee["note"] if fee else None,
-                "fee_id": fee["id"] if fee else None,
+                "month_name": MONTHS_SW[m] if 1 <= m < len(MONTHS_SW) else str(m),
+                "amount": amount,
+                "amount_paid": amount_paid,
+                "status": status,
+                "paid_at": paid_at,
+                "note": note,
+                "fee_id": fee_id,
             }
         )
     return {
         "class_name": class_name,
         "year": y,
         "month": m,
-        "month_name": MONTHS_SW[m],
+        "month_name": MONTHS_SW[m] if 1 <= m < len(MONTHS_SW) else str(m),
         "students": out,
     }
+
 
 
 @router.post("/set-amount")
