@@ -16,6 +16,29 @@ from app.models.user import User, UserRole
 router = APIRouter(prefix="/committee/fees", tags=["committee-fees"])
 require_committee = require_role(UserRole.committee, UserRole.admin)
 
+def _ensure_fees_table(db: Session) -> None:
+    """Create student_fees if missing (production DB may lag models)."""
+    db.execute(text("""
+        CREATE TABLE IF NOT EXISTS student_fees (
+            id VARCHAR(36) PRIMARY KEY,
+            student_id VARCHAR(36),
+            student_user_id VARCHAR(36),
+            year VARCHAR(10),
+            month VARCHAR(10),
+            amount NUMERIC(12,2) DEFAULT 0,
+            amount_paid NUMERIC(12,2) DEFAULT 0,
+            status VARCHAR(20) DEFAULT 'unpaid',
+            paid_at TIMESTAMP NULL,
+            note TEXT NULL,
+            updated_by VARCHAR(36) NULL,
+            created_at TIMESTAMP NULL
+        )
+    """))
+    db.commit()
+
+
+
+
 MONTHS_SW = [
     "", "Januari", "Februari", "Machi", "Aprili", "Mei", "Juni",
     "Julai", "Agosti", "Septemba", "Oktoba", "Novemba", "Desemba",
@@ -39,19 +62,40 @@ class MarkPaidBody(BaseModel):
 
 
 def _fee_row(db: Session, sid: str, y: int, m: int):
-    return db.execute(
-        text(
-            """
-            SELECT id, amount, amount_paid, status, paid_at, note
-            FROM student_fees
-            WHERE student_id = :sid
-              AND CAST(year AS TEXT) = :y
-              AND CAST(month AS TEXT) = :m
-            LIMIT 1
-            """
-        ),
-        {"sid": sid, "y": str(y), "m": str(m)},
-    ).mappings().first()
+    try:
+        return db.execute(
+            text(
+                """
+                SELECT id, amount, amount_paid, status, paid_at, note
+                FROM student_fees
+                WHERE student_id = :sid
+                  AND CAST(year AS TEXT) = :y
+                  AND CAST(month AS TEXT) = :m
+                LIMIT 1
+                """
+            ),
+            {"sid": sid, "y": str(y), "m": str(m)},
+        ).mappings().first()
+    except Exception:
+        db.rollback()
+        try:
+            return db.execute(
+                text(
+                    """
+                    SELECT id, amount, status, paid_at, note
+                    FROM student_fees
+                    WHERE student_id = :sid
+                      AND CAST(year AS TEXT) = :y
+                      AND CAST(month AS TEXT) = :m
+                    LIMIT 1
+                    """
+                ),
+                {"sid": sid, "y": str(y), "m": str(m)},
+            ).mappings().first()
+        except Exception:
+            db.rollback()
+            return None
+
 
 
 def _user_id_for_profile(db: Session, profile_id: str) -> str | None:
@@ -71,6 +115,12 @@ def list_by_class(
 ):
     y = year or datetime.utcnow().year
     m = month or datetime.utcnow().month
+    if not (1 <= m <= 12):
+        m = datetime.utcnow().month
+    try:
+        _ensure_fees_table(db)
+    except Exception:
+        db.rollback()
     students = db.execute(
         text(
             """
@@ -100,7 +150,7 @@ def list_by_class(
                 "month": m,
                 "month_name": MONTHS_SW[m],
                 "amount": float(fee["amount"] or 0) if fee else 0,
-                "amount_paid": float(fee["amount_paid"] or 0) if fee else 0,
+                "amount_paid": float((fee.get("amount_paid") if fee else 0) or 0),
                 "status": (fee["status"] if fee else "unpaid") or "unpaid",
                 "paid_at": fee["paid_at"] if fee else None,
                 "note": fee["note"] if fee else None,
