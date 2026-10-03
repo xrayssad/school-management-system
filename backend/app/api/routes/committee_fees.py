@@ -16,6 +16,12 @@ from app.models.user import User, UserRole
 router = APIRouter(prefix="/committee/fees", tags=["committee-fees"])
 require_committee = require_role(UserRole.committee, UserRole.admin)
 
+MONTHS_SW = [
+    "", "Januari", "Februari", "Machi", "Aprili", "Mei", "Juni",
+    "Julai", "Agosti", "Septemba", "Oktoba", "Novemba", "Desemba",
+]
+
+
 def _ensure_fees_table(db: Session) -> None:
     """Force student_fees columns required by mark-paid / set-amount."""
     from sqlalchemy.exc import SQLAlchemyError
@@ -125,7 +131,8 @@ def list_by_class(
     m = int(month or datetime.utcnow().month)
     if m < 1 or m > 12:
         m = int(datetime.utcnow().month)
-    month_name = MONTHS_SW[m] if 0 < m < len(MONTHS_SW) else str(m)
+    _months = ["", "Januari", "Februari", "Machi", "Aprili", "Mei", "Juni", "Julai", "Agosti", "Septemba", "Oktoba", "Novemba", "Desemba"]
+    month_name = _months[m] if 0 < m < len(_months) else str(m)
 
     # Students only — minimal query
     try:
