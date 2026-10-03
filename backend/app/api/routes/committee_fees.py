@@ -227,64 +227,76 @@ def mark_paid(
 ):
     if body.status not in ("paid", "partial", "unpaid", "waived"):
         raise HTTPException(400, detail="status: paid|partial|unpaid|waived")
-    if not (1 <= body.month <= 12):
+    if not (1 <= int(body.month) <= 12):
         raise HTTPException(400, detail="Mwezi 1–12")
+    try:
+        _ensure_fees_table(db)
+    except Exception:
+        db.rollback()
 
     uid = _user_id_for_profile(db, body.student_id)
     if not uid:
         raise HTTPException(404, detail="Mwanafunzi haipo")
 
-    existing = _fee_row(db, body.student_id, body.year, body.month)
-    amount = float(existing["amount"] or 0) if existing else 0
-    paid = body.amount_paid
-    if paid is None:
-        paid = amount if body.status in ("paid", "waived") else 0
-    paid_at = datetime.utcnow() if body.status in ("paid", "partial") else None
+    try:
+        existing = _fee_row(db, body.student_id, body.year, body.month)
+        amount = float((existing or {}).get("amount") or 0) if existing else 0
+        paid = body.amount_paid
+        if paid is None:
+            paid = amount if body.status in ("paid", "waived") else 0
+        paid_at = datetime.utcnow() if body.status in ("paid", "partial") else None
 
-    if existing:
-        db.execute(
-            text(
-                """
-                UPDATE student_fees SET
-                  amount_paid = :paid, status = :st, paid_at = :pa,
-                  note = :note, updated_by = :u,
-                  student_user_id = COALESCE(student_user_id, :uid)
-                WHERE id = :id
-                """
-            ),
-            {
-                "paid": paid,
-                "st": body.status,
-                "pa": paid_at,
-                "note": body.note,
-                "u": user.id,
-                "uid": uid,
-                "id": existing["id"],
-            },
-        )
-    else:
-        db.execute(
-            text(
-                """
-                INSERT INTO student_fees
-                  (id, student_id, student_user_id, year, month, amount, amount_paid, status, paid_at, note, updated_by, created_at)
-                VALUES (:id, :s, :uid, :y, :m, :a, :paid, :st, :pa, :note, :u, :ca)
-                """
-            ),
-            {
-                "id": str(uuid.uuid4()),
-                "s": body.student_id,
-                "uid": uid,
-                "y": str(body.year),
-                "m": str(body.month),
-                "a": amount or paid,
-                "paid": paid,
-                "st": body.status,
-                "pa": paid_at,
-                "note": body.note,
-                "u": user.id,
-                "ca": datetime.utcnow(),
-            },
-        )
-    db.commit()
-    return {"ok": True, "status": body.status, "amount_paid": paid}
+        if existing:
+            db.execute(
+                text(
+                    """
+                    UPDATE student_fees SET
+                      amount_paid = :paid, status = :st, paid_at = :pa,
+                      note = :note, updated_by = :u,
+                      student_user_id = COALESCE(student_user_id, :uid)
+                    WHERE id = :id
+                    """
+                ),
+                {
+                    "paid": paid,
+                    "st": body.status,
+                    "pa": paid_at,
+                    "note": body.note,
+                    "u": user.id,
+                    "uid": uid,
+                    "id": existing["id"],
+                },
+            )
+        else:
+            db.execute(
+                text(
+                    """
+                    INSERT INTO student_fees
+                      (id, student_id, student_user_id, year, month, amount, amount_paid, status, paid_at, note, updated_by, created_at)
+                    VALUES (:id, :s, :uid, :y, :m, :a, :paid, :st, :pa, :note, :u, :ca)
+                    """
+                ),
+                {
+                    "id": str(uuid.uuid4()),
+                    "s": body.student_id,
+                    "uid": uid,
+                    "y": str(body.year),
+                    "m": str(body.month),
+                    "a": amount or paid or 0,
+                    "paid": paid or 0,
+                    "st": body.status,
+                    "pa": paid_at,
+                    "note": body.note,
+                    "u": user.id,
+                    "ca": datetime.utcnow(),
+                },
+            )
+        db.commit()
+        return {"ok": True, "status": body.status, "amount_paid": paid}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Imeshindikana kuidhinisha malipo: {e}") from e
+
+

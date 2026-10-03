@@ -43,9 +43,16 @@ class Settings(BaseSettings):
         raw = ",".join(part for part in (self.CORS_ORIGINS, self.FRONTEND_ORIGINS) if part)
         seen: list[str] = []
         for origin in raw.split(","):
-            origin = origin.strip()
+            origin = origin.strip().rstrip("/")
             if origin and origin not in seen:
                 seen.append(origin)
+        # Always allow production frontend + local dev
+        for must in (
+            "http://localhost:3000",
+            "https://madrasatulhabibielmustwafa-2.vercel.app",
+        ):
+            if must not in seen:
+                seen.append(must)
         return seen
 
 

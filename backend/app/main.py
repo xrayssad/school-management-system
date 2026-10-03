@@ -34,12 +34,21 @@ uploads_root.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(uploads_root)), name="uploads")
 
 app.add_middleware(GZipMiddleware, minimum_size=500)
+# CORS must be outermost (add last among middlewares) so 401/500 still get headers
+_cors = list(settings.cors_origins)
+for _o in (
+    "http://localhost:3000",
+    "https://madrasatulhabibielmustwafa-2.vercel.app",
+):
+    if _o not in _cors:
+        _cors.append(_o)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=_cors,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 from slowapi import _rate_limit_exceeded_handler
