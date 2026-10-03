@@ -9,9 +9,8 @@ from app.core.uploads import UPLOADS_ROOT
 from app.db.base import Base
 from app.db.session import engine
 
-
 def _ensure_fee_columns():
-    """Must run on every boot — production table may lack student_id."""
+    """Add student_fees columns if missing (production schema drift)."""
     try:
         from sqlalchemy import text
         with engine.connect() as conn:
@@ -36,19 +35,27 @@ def _ensure_fee_columns():
                 except Exception as e:
                     print("fee column skip:", col, e)
     except Exception as e:
-        print("ensure_fee_columns FATAL:", e)
+        print("ensure_fee_columns:", e)
 
 
-
-def _ensure_grade_columns()
-    _ensure_fee_columns():
+def _ensure_grade_columns():
+    """Add grades.status / published_at if missing (older DBs)."""
     try:
         from sqlalchemy import text
         with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE grades ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'submitted'"))
-            conn.execute(text("ALTER TABLE grades ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ NULL"))
+            conn.execute(text(
+                "ALTER TABLE grades ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'submitted'"
+            ))
+            conn.execute(text(
+                "ALTER TABLE grades ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ NULL"
+            ))
     except Exception as e:
         print("ensure_grade_columns:", e)
+
+
+
+
+
 
 from app import models  # noqa: F401  -- ensures all models are registered on Base.metadata
 
