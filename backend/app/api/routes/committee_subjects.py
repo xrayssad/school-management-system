@@ -88,19 +88,36 @@ def delete_subject(subject_id: str, db: Session = Depends(get_db), _: User = Dep
 
 @router.get("/by-class")
 def by_class(db: Session = Depends(get_db), _: User = Depends(require_committee)):
-    """Masomo kwa kila darasa (CLASS_ORDER)."""
-    rows = db.execute(
-        text(
-            """
-            SELECT cs.class_name, s.id AS subject_id, s.name AS subject_name, s.code
-            FROM class_subjects cs
-            JOIN subjects s ON s.id = cs.subject_id
-            WHERE cs.is_active = true
-            ORDER BY cs.class_name, s.name
-            """
-        )
-    ).mappings().all()
+    """Masomo kwa kila darasa — salama hata table/column haipo."""
     by: dict = {cn: [] for cn in CLASS_ORDER}
+    try:
+        rows = db.execute(
+            text(
+                """
+                SELECT cs.class_name, s.id AS subject_id, s.name AS subject_name, s.code
+                FROM class_subjects cs
+                JOIN subjects s ON s.id = cs.subject_id
+                WHERE COALESCE(cs.is_active, true) = true
+                ORDER BY cs.class_name, s.name
+                """
+            )
+        ).mappings().all()
+    except Exception:
+        db.rollback()
+        try:
+            rows = db.execute(
+                text(
+                    """
+                    SELECT cs.class_name, s.id AS subject_id, s.name AS subject_name, s.code
+                    FROM class_subjects cs
+                    JOIN subjects s ON s.id = cs.subject_id
+                    ORDER BY cs.class_name, s.name
+                    """
+                )
+            ).mappings().all()
+        except Exception:
+            db.rollback()
+            return [{"class_name": cn, "subjects": []} for cn in CLASS_ORDER]
     for r in rows:
         cn = r["class_name"]
         if cn not in by:
@@ -108,7 +125,9 @@ def by_class(db: Session = Depends(get_db), _: User = Depends(require_committee)
         by[cn].append(
             {"subject_id": r["subject_id"], "subject_name": r["subject_name"], "code": r["code"]}
         )
-    return [{"class_name": cn, "subjects": by.get(cn, [])} for cn in (list(CLASS_ORDER) + [k for k in by if k not in CLASS_ORDER])]
+    ordered = list(CLASS_ORDER) + [k for k in by if k not in CLASS_ORDER]
+    return [{"class_name": cn, "subjects": by.get(cn, [])} for cn in ordered]
+
 
 
 @router.post("/assign")

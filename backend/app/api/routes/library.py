@@ -14,6 +14,25 @@ from app.core.uploads import uploads_dir
 from app.db.session import get_db
 from app.models.user import User, UserRole
 
+
+def _ensure_library_table(db: Session) -> None:
+    db.execute(text("""
+        CREATE TABLE IF NOT EXISTS library_items (
+            id VARCHAR(36) PRIMARY KEY,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            item_type VARCHAR(50),
+            class_name VARCHAR(100),
+            subject_name VARCHAR(120),
+            term VARCHAR(50),
+            file_url VARCHAR(500),
+            file_name VARCHAR(255),
+            uploaded_by_id VARCHAR(36),
+            created_at TIMESTAMP
+        )
+    """))
+    db.commit()
+
 router = APIRouter(prefix="/library", tags=["library"])
 UPLOAD = uploads_dir("library")
 
@@ -58,7 +77,16 @@ def list_items(
             sql += " AND (class_name = :cn OR class_name IS NULL OR class_name = '')"
             params["cn"] = cn
     sql += " ORDER BY created_at DESC NULLS LAST"
-    rows = db.execute(text(sql), params).mappings().all()
+    try:
+        rows = db.execute(text(sql), params).mappings().all()
+    except Exception as e:
+        db.rollback()
+        try:
+            _ensure_library_table(db)
+            rows = db.execute(text(sql), params).mappings().all()
+        except Exception as e2:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Library error: {e2}") from e2
     return [dict(r) for r in rows]
 
 

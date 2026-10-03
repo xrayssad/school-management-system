@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     # Either name is accepted. Render was documented as CORS_ORIGINS;
     # older deploys used FRONTEND_ORIGINS. Both are merged.
     CORS_ORIGINS: str = ""
-    FRONTEND_ORIGINS: str = "http://localhost:3000"
+    FRONTEND_ORIGINS: str = "http://localhost:3000,https://madrasatulhabibielmustwafa-2.vercel.app"
 
     # Optional email (Gmail app password / any SMTP)
     SMTP_HOST: str = ""
