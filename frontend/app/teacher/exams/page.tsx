@@ -1,11 +1,14 @@
 "use client";
+
+import { apiUrl } from "@/lib/media";
+
 import { resultStatus, statusLabel, statusStyle } from "@/lib/gradeStatus";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { colors } from "@/lib/colors";
 import MadrasaLoader from "@/components/MadrasaLoader";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+const API = apiUrl();
 
 type StudentRow = {
   profile_id: string;

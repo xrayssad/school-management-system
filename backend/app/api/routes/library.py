@@ -10,12 +10,12 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_role
+from app.core.uploads import uploads_dir
 from app.db.session import get_db
 from app.models.user import User, UserRole
 
 router = APIRouter(prefix="/library", tags=["library"])
-UPLOAD = Path("uploads/library")
-UPLOAD.mkdir(parents=True, exist_ok=True)
+UPLOAD = uploads_dir("library")
 
 ALLOWED = {".pdf", ".doc", ".docx", ".epub"}
 require_upload = require_role(UserRole.committee, UserRole.admin, UserRole.teacher)

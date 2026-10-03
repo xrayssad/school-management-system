@@ -1,5 +1,6 @@
 "use client";
 
+import { apiUrl } from "./media";
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { api, setToken } from "./api";
@@ -48,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function register(payload: Record<string, unknown>) {
-    const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+    const API = apiUrl();
     const fd = new FormData();
     const photo = payload.photo;
     for (const [k, v] of Object.entries(payload)) {

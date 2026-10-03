@@ -1,11 +1,14 @@
 "use client";
+
+import { apiUrl } from "@/lib/media";
+
 import MadrasaLoader from "@/components/MadrasaLoader";
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { colors } from "@/lib/colors";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+const API = apiUrl();
 
 type Exam = {
   id: string;

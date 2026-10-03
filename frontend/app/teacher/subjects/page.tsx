@@ -1,10 +1,12 @@
 "use client";
 
+import { apiUrl } from "@/lib/media";
+
 import { useEffect, useMemo, useState } from "react";
 import { colors } from "@/lib/colors";
 import MadrasaLoader from "@/components/MadrasaLoader";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+const API = apiUrl();
 
 type Flat = {
   class_name: string;

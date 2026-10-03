@@ -1,12 +1,13 @@
 "use client";
-import { mediaUrl } from "@/lib/media";
+
+import { apiUrl, mediaUrl } from "@/lib/media";
 import MadrasaLoader from "@/components/MadrasaLoader";
 
 import { FormEvent, useEffect, useState } from "react";
 import { Megaphone, Paperclip, Send } from "lucide-react";
 import { colors } from "@/lib/colors";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+const API = apiUrl();
 
 type Ann = {
   id: string;

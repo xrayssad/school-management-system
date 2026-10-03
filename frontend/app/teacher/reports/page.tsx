@@ -1,10 +1,11 @@
 "use client";
-import { mediaUrl } from "@/lib/media";
+
+import { apiUrl, mediaUrl } from "@/lib/media";
 import { useEffect, useState } from "react";
 import { colors } from "@/lib/colors";
 import MadrasaLoader from "@/components/MadrasaLoader";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+const API = apiUrl();
 
 export default function TeacherReportsPage() {
   const [items, setItems] = useState<any[]>([]);

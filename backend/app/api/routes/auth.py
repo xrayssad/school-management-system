@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.security import hash_password, verify_password, create_access_token
+from app.core.uploads import uploads_dir
 from app.db.session import get_db
 from app.models.user import User, UserRole, StudentProfile
 from app.models.committee import RegistrationRequest, RegistrationStatus
@@ -21,8 +22,7 @@ from app.schemas.fees import ForgotPasswordIn, ResetPasswordIn
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-UPLOAD_REG = Path("uploads/registrations")
-UPLOAD_REG.mkdir(parents=True, exist_ok=True)
+UPLOAD_REG = uploads_dir("registrations")
 
 
 

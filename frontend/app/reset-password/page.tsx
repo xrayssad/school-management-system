@@ -1,4 +1,7 @@
 "use client";
+
+import { apiUrl } from "@/lib/media";
+
 import MadrasaLoader from "@/components/MadrasaLoader";
 
 import { FormEvent, useMemo, useState, Suspense } from "react";
@@ -7,7 +10,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Lock, CheckCircle } from "lucide-react";
 import { colors } from "@/lib/colors";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+const API = apiUrl();
 
 function ResetForm() {
   const params = useSearchParams();

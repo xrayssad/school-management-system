@@ -1,13 +1,6 @@
-const PROD_API = "https://madrasatulhabibielmustwafa-api.onrender.com/api";
-function resolveApiUrl(): string {
-  const env = process.env.NEXT_PUBLIC_API_URL;
-  if (env && env.trim()) return env.replace(/\/$/, "");
-  if (typeof window !== "undefined" && window.location.hostname !== "localhost") {
-    return PROD_API;
-  }
-  return "http://localhost:8000/api";
-}
-const API_URL = resolveApiUrl();
+import { apiUrl } from "./media";
+
+const API_URL = apiUrl();
 
 export class ApiError extends Error {
   status: number;

@@ -1,12 +1,14 @@
 "use client";
 
+import { apiUrl } from "@/lib/media";
+
 import { useCallback, useEffect, useState } from "react";
 import { colors } from "@/lib/colors";
 import { allClasses } from "@/lib/classes";
 import MadrasaLoader from "@/components/MadrasaLoader";
 import { resultStatus, statusLabel, statusStyle } from "@/lib/gradeStatus";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+const API = apiUrl();
 
 export default function CommitteeGradesPage() {
   const [className, setClassName] = useState("");

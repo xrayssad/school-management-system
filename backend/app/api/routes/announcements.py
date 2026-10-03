@@ -15,19 +15,34 @@ _BASE_COLS = "id, title, message, teacher_id, subject_id, class_name, priority, 
 
 
 def relative_media_path(url: str | None) -> str | None:
-    """Strip origin (localhost/127.0.0.1/prod) so the frontend can rebuild the host."""
+    """Normalise a stored media value to a relative "/uploads/..." path.
+
+    Strips any origin (localhost, vercel.app, production) and any stray
+    "/api" prefix so the frontend can rebuild the host from one place.
+    """
     if not url:
         return None
     value = str(url).strip()
     if not value:
         return None
+    query = ""
     if value.startswith("http://") or value.startswith("https://"):
         from urllib.parse import urlparse
 
         parsed = urlparse(value)
         path = parsed.path or ""
-        return f"{path}?{parsed.query}" if parsed.query else path
-    return value if value.startswith("/") else f"/{value}"
+        query = parsed.query
+    else:
+        path = value
+    if path == "/api":
+        path = "/"
+    elif path.startswith("/api/"):
+        path = path[4:]
+    elif path.startswith("api/"):
+        path = "/" + path[4:]
+    if not path.startswith("/"):
+        path = f"/{path}"
+    return f"{path}?{query}" if query else path
 
 
 def _fetch_rows(db: Session) -> list:

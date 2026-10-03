@@ -1,5 +1,6 @@
 "use client";
-import { mediaUrl } from "@/lib/media";
+
+import { apiUrl, mediaUrl } from "@/lib/media";
 
 import { useEffect, useMemo, useState } from "react";
 import { Download, Plus, Trash2 } from "lucide-react";
@@ -7,7 +8,7 @@ import { colors } from "@/lib/colors";
 import { allClasses } from "@/lib/classes";
 import MadrasaLoader from "@/components/MadrasaLoader";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+const API = apiUrl();
 
 type EvalRow = {
   class_name: string;

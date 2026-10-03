@@ -1,5 +1,6 @@
 
 import { api } from "@/lib/api";
+import { apiUrl } from "@/lib/media";
 
 export type RegistrationRequest = {
   id: string;
@@ -36,8 +37,7 @@ export const registrationApi = {
       typeof window !== "undefined"
         ? localStorage.getItem("madrasa_token")
         : null;
-    const base =
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+    const base = apiUrl();
     const fd = new FormData();
     fd.append("file", file);
     const res = await fetch(`${base}/committee/students/import-csv`, {

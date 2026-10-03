@@ -1,14 +1,12 @@
 "use client";
 
-import { mediaUrl } from "@/lib/media";
+import { apiUrl, mediaUrl } from "@/lib/media";
 import { useCallback, useEffect, useState } from "react";
 import { colors } from "@/lib/colors";
 import { allClasses } from "@/lib/classes";
 import MadrasaLoader from "@/components/MadrasaLoader";
 
-const API =
-  process.env.NEXT_PUBLIC_API_URL ||
-  "https://madrasatulhabibielmustwafa-api.onrender.com/api";
+const API = apiUrl();
 
 type Student = {
   user_id: string;

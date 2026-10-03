@@ -12,14 +12,14 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import require_role
 from app.core.security import hash_password
+from app.core.uploads import uploads_dir
 from app.db.session import get_db
 from app.models.user import User, UserRole
 
 router = APIRouter(prefix="/committee/students", tags=["committee-csv-students"])
 require_committee = require_role(UserRole.committee, UserRole.admin)
 
-UPLOAD = Path("uploads/students")
-UPLOAD.mkdir(parents=True, exist_ok=True)
+UPLOAD = uploads_dir("students")
 
 
 def _gen_code(db: Session) -> str:

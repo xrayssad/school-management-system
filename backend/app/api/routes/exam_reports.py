@@ -22,6 +22,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage, HRFlowable
 
 from app.api.deps import require_role, get_current_user
+from app.core.uploads import UPLOADS_ROOT, uploads_dir
 from app.db.session import get_db
 from app.models.user import User, UserRole
 from app.models.exam_policy import ClassPromotionRule, ExamReportFile
@@ -29,8 +30,7 @@ from app.models.exam_policy import ClassPromotionRule, ExamReportFile
 router = APIRouter(prefix="/committee/exam-reports", tags=["exam-reports"])
 require_committee = require_role(UserRole.committee, UserRole.admin)
 
-REPORTS_DIR = Path("uploads/reports")
-REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+REPORTS_DIR = uploads_dir("reports")
 
 
 class PromotionRuleIn(BaseModel):
@@ -265,7 +265,7 @@ def _build_pdf(title: str, lines: list[list[str]], subtitle: str = "", extra_not
         "S", parent=styles["Normal"], fontSize=9, textColor=rl_colors.HexColor("#4A554F"), spaceAfter=2,
     )
     story = []
-    logo_path = Path("uploads/logo.jpg")
+    logo_path = UPLOADS_ROOT / "logo.jpg"
     if logo_path.exists():
         try:
             img = RLImage(str(logo_path), width=48, height=48)
@@ -662,7 +662,7 @@ def download_report(file_id: str, db: Session = Depends(get_db), user: User = De
     rec = db.get(ExamReportFile, file_id)
     if not rec:
         raise HTTPException(404, "Faili halipo")
-    path = Path("uploads/reports") / Path(rec.file_url).name
+    path = REPORTS_DIR / Path(rec.file_url).name
     if not path.exists():
         raise HTTPException(404, "PDF haipo kwenye server")
     return FileResponse(path, media_type="application/pdf", filename=f"{rec.title}.pdf")

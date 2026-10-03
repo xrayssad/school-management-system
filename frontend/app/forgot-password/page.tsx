@@ -1,11 +1,13 @@
 "use client";
 
+import { apiUrl } from "@/lib/media";
+
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { Mail, ArrowLeft, CheckCircle } from "lucide-react";
 import { colors } from "@/lib/colors";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+const API = apiUrl();
 
 export default function ForgotPasswordPage() {
   const [identifier, setIdentifier] = useState("");

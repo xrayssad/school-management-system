@@ -1,12 +1,14 @@
 "use client";
 
+import { apiUrl } from "@/lib/media";
+
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { KeyRound, Search } from "lucide-react";
 import { colors } from "@/lib/colors";
 import { allClasses } from "@/lib/classes";
 import MadrasaLoader from "@/components/MadrasaLoader";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+const API = apiUrl();
 
 type StudentRow = {
   id: string;

@@ -8,14 +8,14 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import require_role
 from app.api.routes.announcements import relative_media_path
+from app.core.uploads import uploads_dir
 from app.db.session import get_db
 from app.models.user import User, UserRole
 
 router = APIRouter(prefix="/committee/announcements", tags=["committee-announcements"])
 require_committee = require_role(UserRole.committee, UserRole.admin)
 
-UPLOAD = Path("uploads/announcements")
-UPLOAD.mkdir(parents=True, exist_ok=True)
+UPLOAD = uploads_dir("announcements")
 ALLOWED = {".pdf", ".png", ".jpg", ".jpeg", ".webp"}
 
 

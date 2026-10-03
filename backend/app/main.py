@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.core.uploads import UPLOADS_ROOT
 from app.db.base import Base
 from app.db.session import engine
 
@@ -26,9 +27,11 @@ from app.api.routes import auth, users, students, teachers, subjects, timetable,
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
-uploads_dir = Path("uploads")
-uploads_dir.mkdir(exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
+# Serve uploads from the canonical uploads root (anchored to the backend
+# directory, not the process CWD) so /uploads/... always resolves.
+uploads_root = UPLOADS_ROOT
+uploads_root.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(uploads_root)), name="uploads")
 
 app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(

@@ -1,5 +1,6 @@
 "use client";
-import { mediaUrl } from "@/lib/media";
+
+import { apiUrl, mediaUrl } from "@/lib/media";
 
 import MadrasaLoader from "@/components/MadrasaLoader";
 
@@ -8,7 +9,7 @@ import { api } from "@/lib/api";
 import { colors } from "@/lib/colors";
 import { allClasses } from "@/lib/classes";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+const API = apiUrl();
 
 type Item = {
   id: string;

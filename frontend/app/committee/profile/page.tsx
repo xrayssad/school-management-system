@@ -1,11 +1,13 @@
 "use client";
 
+import { apiUrl } from "@/lib/media";
+
 import { FormEvent, useEffect, useState } from "react";
 import { colors } from "@/lib/colors";
 import MadrasaLoader from "@/components/MadrasaLoader";
 import { useAuth } from "@/lib/auth-context";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+const API = apiUrl();
 
 export default function CommitteeProfilePage() {
   const { user, refreshUser } = useAuth();

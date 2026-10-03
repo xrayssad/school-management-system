@@ -1,5 +1,6 @@
 "use client";
-import { mediaUrl } from "@/lib/media";
+
+import { apiUrl, mediaUrl } from "@/lib/media";
 
 import { useEffect, useState } from "react";
 import { Download, FileText } from "lucide-react";
@@ -15,7 +16,7 @@ type ReportFile = {
   created_at: string;
 };
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+const API = apiUrl();
 
 export default function ExamReportsDownload() {
   const [files, setFiles] = useState<ReportFile[]>([]);

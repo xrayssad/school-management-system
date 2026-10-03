@@ -4,7 +4,6 @@ from __future__ import annotations
 import uuid
 from collections import defaultdict
 from datetime import datetime
-from pathlib import Path as FPath
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
@@ -12,6 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_role
+from app.core.uploads import uploads_dir
 from app.db.session import get_db
 from app.models.user import User, UserRole
 
@@ -30,8 +30,7 @@ except Exception:
 
 router = APIRouter(prefix="/committee/exam-reports", tags=["committee-exam-reports"])
 require_committee = require_role(UserRole.committee, UserRole.admin)
-UPLOAD = FPath("uploads/reports")
-UPLOAD.mkdir(parents=True, exist_ok=True)
+UPLOAD = uploads_dir("reports")
 
 
 def _letter(avg: float) -> str:
