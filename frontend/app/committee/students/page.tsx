@@ -69,6 +69,39 @@ export default function CommitteeStudentsPage() {
     load();
   }, [load]);
 
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || "https://madrasatulhabibielmustwafa-api.onrender.com/api";
+  const authHeaders = () => ({
+    Authorization: `Bearer ${localStorage.getItem("madrasa_token")}`,
+    "Content-Type": "application/json",
+  });
+  async function blockStudent(id: string) {
+    await fetch(`${apiBase}/committee/students/${id}/block`, { method: "POST", headers: authHeaders() });
+    await load();
+  }
+  async function unblockStudent(id: string) {
+    await fetch(`${apiBase}/committee/students/${id}/unblock`, { method: "POST", headers: authHeaders() });
+    await load();
+  }
+  async function deleteStudent(id: string) {
+    if (!confirm("Futa akaunti ya mwanafunzi kabisa?")) return;
+    await fetch(`${apiBase}/committee/students/${id}`, { method: "DELETE", headers: authHeaders() });
+    await load();
+  }
+  async function saveStudent(id: string, body: Record<string, unknown>) {
+    const res = await fetch(`${apiBase}/committee/students/${id}`, {
+      method: "PATCH",
+      headers: authHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const b = await res.json().catch(() => ({}));
+      alert(typeof b.detail === "string" ? b.detail : "Imeshindikana kuhifadhi");
+      return;
+    }
+    await load();
+  }
+
+
   async function upload() {
     setUploadMsg("");
     setUploadErr("");
@@ -126,7 +159,7 @@ export default function CommitteeStudentsPage() {
           Pakia CSV
         </p>
         <p className="text-xs" style={{ color: colors.stone }}>
-          Headers: full_name, email, class_name, phone, password, student_code, photo_filename
+          Headers: full_name,email,class_name,phone,password,student_code,guardian_name,photo_filename · Namba: MHM.2026/001 (slash) · password chaguo-msingi Student@123 · ZIP+photo_filename kwa picha
         </p>
         <div className="flex flex-wrap gap-4">
           <div>

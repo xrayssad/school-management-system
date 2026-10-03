@@ -25,21 +25,21 @@ require_committee = require_role(UserRole.committee, UserRole.admin)
 
 
 def _gen_student_code(db: Session) -> str:
-    """MHM.2026.001 ..."""
+    """MHM.2026/001 ..."""
     from datetime import datetime
     year = datetime.utcnow().year
-    prefix = f"MHM.{year}."
+    prefix = f"MHM.{year}/"
     rows = db.query(StudentProfile.student_code).filter(
         StudentProfile.student_code.like(f"{prefix}%")
     ).all()
     max_n = 0
     for (c,) in rows:
         try:
-            max_n = max(max_n, int(str(c).split(".")[-1]))
+            max_n = max(max_n, int(str(c).split("/")[-1]))
         except Exception:
             pass
     n = max_n + 1
-    for _ in range(1000):
+    for _ in range(5000):
         code = f"{prefix}{n:03d}"
         if not db.query(StudentProfile).filter(StudentProfile.student_code == code).first():
             return code

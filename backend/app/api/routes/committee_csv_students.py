@@ -23,10 +23,10 @@ UPLOAD.mkdir(parents=True, exist_ok=True)
 
 
 def _gen_code(db: Session) -> str:
-    """Format: MHM.2026.001, MHM.2026.002, ..."""
+    """MHM.2026/001, MHM.2026/002, ... (slash)."""
     from datetime import datetime
     year = datetime.utcnow().year
-    prefix = f"MHM.{year}."
+    prefix = f"MHM.{year}/"
     rows = db.execute(
         text("SELECT student_code FROM student_profiles WHERE student_code LIKE :p"),
         {"p": f"{prefix}%"},
@@ -34,16 +34,13 @@ def _gen_code(db: Session) -> str:
     max_n = 0
     for c in rows:
         try:
-            max_n = max(max_n, int(str(c).split(".")[-1]))
+            max_n = max(max_n, int(str(c).split("/")[-1]))
         except Exception:
             pass
     n = max_n + 1
-    for _ in range(1000):
+    for _ in range(5000):
         code = f"{prefix}{n:03d}"
-        exists = db.execute(
-            text("SELECT 1 FROM student_profiles WHERE student_code = :c"), {"c": code}
-        ).first()
-        if not exists:
+        if not db.execute(text("SELECT 1 FROM student_profiles WHERE student_code = :c"), {"c": code}).first():
             return code
         n += 1
     return f"{prefix}{n:03d}"
