@@ -17,45 +17,32 @@ router = APIRouter(prefix="/committee/fees", tags=["committee-fees"])
 require_committee = require_role(UserRole.committee, UserRole.admin)
 
 def _ensure_fees_table(db: Session) -> None:
-    """Ensure student_fees exists and has columns code expects."""
-    db.execute(text("""
+    """Force student_fees columns required by mark-paid / set-amount."""
+    from sqlalchemy.exc import SQLAlchemyError
+    stmts = [
+        """
         CREATE TABLE IF NOT EXISTS student_fees (
-            id VARCHAR(36) PRIMARY KEY,
-            student_id VARCHAR(36),
-            student_user_id VARCHAR(36),
-            year VARCHAR(10),
-            month VARCHAR(10),
-            amount NUMERIC(12,2) DEFAULT 0,
-            amount_paid NUMERIC(12,2) DEFAULT 0,
-            status VARCHAR(20) DEFAULT 'unpaid',
-            paid_at TIMESTAMP NULL,
-            note TEXT NULL,
-            updated_by VARCHAR(36) NULL,
-            created_at TIMESTAMP NULL
+            id VARCHAR(36) PRIMARY KEY
         )
-    """))
-    # Add missing columns on existing tables (Postgres)
-    for col, typ in [
-        ("student_id", "VARCHAR(36)"),
-        ("student_user_id", "VARCHAR(36)"),
-        ("year", "VARCHAR(10)"),
-        ("month", "VARCHAR(10)"),
-        ("amount", "NUMERIC(12,2) DEFAULT 0"),
-        ("amount_paid", "NUMERIC(12,2) DEFAULT 0"),
-        ("status", "VARCHAR(20) DEFAULT 'unpaid'"),
-        ("paid_at", "TIMESTAMP NULL"),
-        ("note", "TEXT"),
-        ("updated_by", "VARCHAR(36)"),
-        ("created_at", "TIMESTAMP"),
-    ]:
+        """,
+        "ALTER TABLE student_fees ADD COLUMN IF NOT EXISTS student_id VARCHAR(36)",
+        "ALTER TABLE student_fees ADD COLUMN IF NOT EXISTS student_user_id VARCHAR(36)",
+        "ALTER TABLE student_fees ADD COLUMN IF NOT EXISTS year VARCHAR(10)",
+        "ALTER TABLE student_fees ADD COLUMN IF NOT EXISTS month VARCHAR(10)",
+        "ALTER TABLE student_fees ADD COLUMN IF NOT EXISTS amount NUMERIC(12,2) DEFAULT 0",
+        "ALTER TABLE student_fees ADD COLUMN IF NOT EXISTS amount_paid NUMERIC(12,2) DEFAULT 0",
+        "ALTER TABLE student_fees ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'unpaid'",
+        "ALTER TABLE student_fees ADD COLUMN IF NOT EXISTS paid_at TIMESTAMP NULL",
+        "ALTER TABLE student_fees ADD COLUMN IF NOT EXISTS note TEXT",
+        "ALTER TABLE student_fees ADD COLUMN IF NOT EXISTS updated_by VARCHAR(36)",
+        "ALTER TABLE student_fees ADD COLUMN IF NOT EXISTS created_at TIMESTAMP",
+    ]
+    for sql in stmts:
         try:
-            db.execute(text(f"ALTER TABLE student_fees ADD COLUMN IF NOT EXISTS {col} {typ}"))
+            db.execute(text(sql))
+            db.commit()
         except Exception:
             db.rollback()
-    try:
-        db.commit()
-    except Exception:
-        db.rollback()
 
 
 
@@ -186,6 +173,7 @@ def set_amount_for_class(
     db: Session = Depends(get_db),
     user: User = Depends(require_committee),
 ):
+    _ensure_fees_table(db)
     if not (1 <= body.month <= 12):
         raise HTTPException(400, detail="Mwezi 1–12")
     students = db.execute(

@@ -11,25 +11,12 @@ from app.db.session import engine
 
 
 def _ensure_fee_columns():
+    """Must run on every boot — production table may lack student_id."""
     try:
         from sqlalchemy import text
-        with engine.begin() as conn:
-            conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS student_fees (
-                    id VARCHAR(36) PRIMARY KEY,
-                    student_id VARCHAR(36),
-                    student_user_id VARCHAR(36),
-                    year VARCHAR(10),
-                    month VARCHAR(10),
-                    amount NUMERIC(12,2) DEFAULT 0,
-                    amount_paid NUMERIC(12,2) DEFAULT 0,
-                    status VARCHAR(20) DEFAULT 'unpaid',
-                    paid_at TIMESTAMP NULL,
-                    note TEXT NULL,
-                    updated_by VARCHAR(36) NULL,
-                    created_at TIMESTAMP NULL
-                )
-            """))
+        with engine.connect() as conn:
+            conn = conn.execution_options(isolation_level="AUTOCOMMIT")
+            conn.execute(text("CREATE TABLE IF NOT EXISTS student_fees (id VARCHAR(36) PRIMARY KEY)"))
             for col, typ in [
                 ("student_id", "VARCHAR(36)"),
                 ("student_user_id", "VARCHAR(36)"),
@@ -45,10 +32,12 @@ def _ensure_fee_columns():
             ]:
                 try:
                     conn.execute(text(f"ALTER TABLE student_fees ADD COLUMN IF NOT EXISTS {col} {typ}"))
+                    print("fee column ok:", col)
                 except Exception as e:
-                    print("fee col", col, e)
+                    print("fee column skip:", col, e)
     except Exception as e:
-        print("ensure_fee_columns:", e)
+        print("ensure_fee_columns FATAL:", e)
+
 
 
 def _ensure_grade_columns()
