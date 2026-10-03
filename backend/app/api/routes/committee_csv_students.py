@@ -23,13 +23,31 @@ UPLOAD.mkdir(parents=True, exist_ok=True)
 
 
 def _gen_code(db: Session) -> str:
-    for _ in range(40):
-        code = f"STU{uuid.uuid4().hex[:5].upper()}"
-        if not db.execute(
+    """Format: MHM.2026.001, MHM.2026.002, ..."""
+    from datetime import datetime
+    year = datetime.utcnow().year
+    prefix = f"MHM.{year}."
+    rows = db.execute(
+        text("SELECT student_code FROM student_profiles WHERE student_code LIKE :p"),
+        {"p": f"{prefix}%"},
+    ).scalars().all()
+    max_n = 0
+    for c in rows:
+        try:
+            max_n = max(max_n, int(str(c).split(".")[-1]))
+        except Exception:
+            pass
+    n = max_n + 1
+    for _ in range(1000):
+        code = f"{prefix}{n:03d}"
+        exists = db.execute(
             text("SELECT 1 FROM student_profiles WHERE student_code = :c"), {"c": code}
-        ).first():
+        ).first()
+        if not exists:
             return code
-    return f"STU{uuid.uuid4().hex[:8].upper()}"
+        n += 1
+    return f"{prefix}{n:03d}"
+
 
 
 @router.post("/import-csv")
@@ -181,23 +199,41 @@ def list_students(
     db: Session = Depends(get_db),
     _: User = Depends(require_committee),
 ):
-    """Orodha ya wanafunzi waliosajiliwa."""
-    sql = """
-        SELECT u.id AS user_id, u.full_name, u.email, u.phone, u.avatar_url, u.is_active, u.created_at,
+    """Orodha ya wanafunzi — SQL salama."""
+    params: dict = {}
+    filters = ["CAST(u.role AS VARCHAR) = 'student'"]
+    if class_name:
+        filters.append("sp.class_name = :cn")
+        params["cn"] = class_name
+    if q and q.strip():
+        filters.append(
+            "(u.full_name ILIKE :q OR u.email ILIKE :q OR sp.student_code ILIKE :q)"
+        )
+        params["q"] = f"%{q.strip()}%"
+    where = " AND ".join(filters)
+    sql_full = f"""
+        SELECT u.id AS user_id, u.full_name, u.email, u.phone, u.avatar_url,
+               u.is_active, u.created_at,
                sp.id AS profile_id, sp.student_code, sp.class_name,
                sp.promotion_status, sp.guardian_name, sp.guardian_phone
         FROM users u
         JOIN student_profiles sp ON sp.user_id = u.id
-        WHERE u.role = 'student'
+        WHERE {where}
+        ORDER BY sp.class_name, u.full_name
     """
-    params = {}
-    if class_name:
-        sql += " AND sp.class_name = :cn"
-        params["cn"] = class_name
-    if q:
-        sql += " AND (u.full_name ILIKE :q OR u.email ILIKE :q OR sp.student_code ILIKE :q)"
-        params["q"] = f"%{q}%"
-    sql += " ORDER BY sp.class_name, u.full_name"
-    rows = db.execute(text(sql), params).mappings().all()
+    sql_basic = f"""
+        SELECT u.id AS user_id, u.full_name, u.email, u.phone, u.avatar_url,
+               u.is_active, u.created_at,
+               sp.id AS profile_id, sp.student_code, sp.class_name
+        FROM users u
+        JOIN student_profiles sp ON sp.user_id = u.id
+        WHERE {where}
+        ORDER BY sp.class_name, u.full_name
+    """
+    try:
+        rows = db.execute(text(sql_full), params).mappings().all()
+    except Exception:
+        db.rollback()
+        rows = db.execute(text(sql_basic), params).mappings().all()
     return [dict(r) for r in rows]
 

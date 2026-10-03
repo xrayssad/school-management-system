@@ -25,11 +25,27 @@ require_committee = require_role(UserRole.committee, UserRole.admin)
 
 
 def _gen_student_code(db: Session) -> str:
-    for _ in range(30):
-        code = "STU" + "".join(random.choices(string.digits, k=5))
+    """MHM.2026.001 ..."""
+    from datetime import datetime
+    year = datetime.utcnow().year
+    prefix = f"MHM.{year}."
+    rows = db.query(StudentProfile.student_code).filter(
+        StudentProfile.student_code.like(f"{prefix}%")
+    ).all()
+    max_n = 0
+    for (c,) in rows:
+        try:
+            max_n = max(max_n, int(str(c).split(".")[-1]))
+        except Exception:
+            pass
+    n = max_n + 1
+    for _ in range(1000):
+        code = f"{prefix}{n:03d}"
         if not db.query(StudentProfile).filter(StudentProfile.student_code == code).first():
             return code
-    return "STU" + "".join(random.choices(string.digits, k=8))
+        n += 1
+    return f"{prefix}{n:03d}"
+
 
 
 @router.get("/registrations", response_model=list[RegistrationOut])
@@ -130,7 +146,7 @@ async def import_students_csv(
     CSV headers:
     full_name,email,phone,class_name,student_code,password,guardian_name,guardian_phone
     password tupu => Student@123
-    student_code tupu => auto STU#####
+    student_code tupu => auto MHM.YEAR.NNN
     """
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Pakia faili ya .csv")

@@ -52,13 +52,9 @@ export default function CommitteeStudentsPage() {
         headers: { Authorization: `Bearer ${token()}` },
       });
       if (!res.ok) {
-        const res2 = await fetch(`${API}/students`, {
-          headers: { Authorization: `Bearer ${token()}` },
-        });
-        if (!res2.ok) throw new Error("Imeshindikana kupakia wanafunzi");
-        const data2 = await res2.json();
-        setStudents(Array.isArray(data2) ? data2 : data2.students || []);
-        return;
+        const body = await res.json().catch(() => ({}));
+        const detail = typeof body.detail === "string" ? body.detail : `HTTP ${res.status}`;
+        throw new Error(detail || "Imeshindikana kupakia wanafunzi");
       }
       const data = await res.json();
       setStudents(Array.isArray(data) ? data : data.students || []);
