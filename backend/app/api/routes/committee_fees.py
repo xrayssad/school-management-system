@@ -63,38 +63,45 @@ class MarkPaidBody(BaseModel):
 
 
 def _fee_row(db: Session, sid: str, y: int, m: int):
+    """Return fee dict or None. Never raises."""
     try:
-        return db.execute(
+        row = db.execute(
             text(
                 """
-                SELECT id, amount, amount_paid, status, paid_at, note
-                FROM student_fees
-                WHERE student_id = :sid
+                SELECT * FROM student_fees
+                WHERE CAST(student_id AS TEXT) = :sid
                   AND CAST(year AS TEXT) = :y
                   AND CAST(month AS TEXT) = :m
                 LIMIT 1
                 """
             ),
-            {"sid": sid, "y": str(y), "m": str(m)},
+            {"sid": str(sid), "y": str(y), "m": str(m)},
         ).mappings().first()
+        return dict(row) if row else None
     except Exception:
-        db.rollback()
         try:
-            return db.execute(
+            db.rollback()
+        except Exception:
+            pass
+        try:
+            row = db.execute(
                 text(
                     """
-                    SELECT id, amount, status, paid_at, note
-                    FROM student_fees
-                    WHERE student_id = :sid
+                    SELECT * FROM student_fees
+                    WHERE CAST(student_user_id AS TEXT) = :sid
                       AND CAST(year AS TEXT) = :y
                       AND CAST(month AS TEXT) = :m
                     LIMIT 1
                     """
                 ),
-                {"sid": sid, "y": str(y), "m": str(m)},
+                {"sid": str(sid), "y": str(y), "m": str(m)},
             ).mappings().first()
+            return dict(row) if row else None
         except Exception:
-            db.rollback()
+            try:
+                db.rollback()
+            except Exception:
+                pass
             return None
 
 
@@ -114,19 +121,13 @@ def list_by_class(
     db: Session = Depends(get_db),
     _: User = Depends(require_committee),
 ):
-    """Orodha ya wanafunzi + hali ya ada — haivunjiki hata fee table iko incomplete."""
-    y = year or datetime.utcnow().year
-    m = month or datetime.utcnow().month
-    if not (1 <= int(m) <= 12):
-        m = datetime.utcnow().month
-    try:
-        _ensure_fees_table(db)
-    except Exception:
-        try:
-            db.rollback()
-        except Exception:
-            pass
+    y = int(year or datetime.utcnow().year)
+    m = int(month or datetime.utcnow().month)
+    if m < 1 or m > 12:
+        m = int(datetime.utcnow().month)
+    month_name = MONTHS_SW[m] if 0 < m < len(MONTHS_SW) else str(m)
 
+    # Students only — minimal query
     try:
         students = db.execute(
             text(
@@ -135,27 +136,24 @@ def list_by_class(
                        u.full_name, u.email
                 FROM student_profiles sp
                 JOIN users u ON u.id = sp.user_id
-                WHERE sp.class_name = :cn AND COALESCE(u.is_active, true) = true
+                WHERE sp.class_name = :cn
                 ORDER BY u.full_name
                 """
             ),
             {"cn": class_name},
         ).mappings().all()
     except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Imeshindikana kupakia wanafunzi: {e}") from e
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail=f"students query: {type(e).__name__}: {e}") from e
 
     out = []
     for s in students:
-        fee = None
-        try:
-            fee = _fee_row(db, s["student_id"], y, m)
-        except Exception:
-            try:
-                db.rollback()
-            except Exception:
-                pass
-            fee = None
+        fee = _fee_row(db, s["student_id"], y, m)
+        if fee is None and s.get("user_id"):
+            fee = _fee_row(db, s["user_id"], y, m)
         amount = 0.0
         amount_paid = 0.0
         status = "unpaid"
@@ -163,42 +161,40 @@ def list_by_class(
         note = None
         fee_id = None
         if fee:
-            try:
-                amount = float(fee.get("amount") or 0)
-            except Exception:
-                amount = 0.0
-            try:
-                amount_paid = float(fee.get("amount_paid") or 0)
-            except Exception:
-                amount_paid = 0.0
-            status = (fee.get("status") or "unpaid")
+            for k, default in (("amount", 0), ("amount_paid", 0)):
+                try:
+                    if k == "amount":
+                        amount = float(fee.get(k) or 0)
+                    else:
+                        amount_paid = float(fee.get(k) or 0)
+                except Exception:
+                    pass
+            status = str(fee.get("status") or "unpaid")
             paid_at = fee.get("paid_at")
             note = fee.get("note")
             fee_id = fee.get("id")
-        out.append(
-            {
-                "student_id": s["student_id"],
-                "user_id": s["user_id"],
-                "student_code": s.get("student_code"),
-                "class_name": s.get("class_name"),
-                "full_name": s.get("full_name"),
-                "email": s.get("email"),
-                "year": y,
-                "month": m,
-                "month_name": MONTHS_SW[m] if 1 <= m < len(MONTHS_SW) else str(m),
-                "amount": amount,
-                "amount_paid": amount_paid,
-                "status": status,
-                "paid_at": paid_at,
-                "note": note,
-                "fee_id": fee_id,
-            }
-        )
+        out.append({
+            "student_id": s["student_id"],
+            "user_id": s["user_id"],
+            "student_code": s.get("student_code"),
+            "class_name": s.get("class_name"),
+            "full_name": s.get("full_name"),
+            "email": s.get("email"),
+            "year": y,
+            "month": m,
+            "month_name": month_name,
+            "amount": amount,
+            "amount_paid": amount_paid,
+            "status": status,
+            "paid_at": paid_at,
+            "note": note,
+            "fee_id": fee_id,
+        })
     return {
         "class_name": class_name,
         "year": y,
         "month": m,
-        "month_name": MONTHS_SW[m] if 1 <= m < len(MONTHS_SW) else str(m),
+        "month_name": month_name,
         "students": out,
     }
 

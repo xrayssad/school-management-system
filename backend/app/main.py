@@ -102,9 +102,10 @@ class ForceCorsMiddleware(BaseHTTPMiddleware):
         origin = request.headers.get("origin") or ""
         try:
             response = await call_next(request)
-        except Exception:
+        except Exception as exc:
+            import json as _json
             response = Response(
-                content='{"detail":"Internal Server Error"}',
+                content=_json.dumps({"detail": f"{type(exc).__name__}: {exc}"}),
                 status_code=500,
                 media_type="application/json",
             )
