@@ -32,7 +32,12 @@ export function mediaUrl(path?: string | null): string | null {
   if (p.startsWith("http://") || p.startsWith("https://")) {
     try {
       const u = new URL(p);
-      if (u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname === "0.0.0.0") {
+      if (
+        u.hostname === "localhost" ||
+        u.hostname === "127.0.0.1" ||
+        u.hostname === "0.0.0.0" ||
+        u.hostname.endsWith("vercel.app")
+      ) {
         return `${apiOrigin()}${u.pathname}${u.search}`;
       }
     } catch {
