@@ -91,7 +91,18 @@ def login(
         raise HTTPException(status_code=422, detail="Weka namba ya usajili au barua pepe")
 
     user = None
-    profile = db.query(StudentProfile).filter(StudentProfile.student_code == identifier.upper()).first()
+    profile = (
+        db.query(StudentProfile)
+        .filter(StudentProfile.student_code == identifier.upper())
+        .first()
+    )
+    if not profile:
+        # jaribu bila upper (namba zilizoandikwa tofauti)
+        profile = (
+            db.query(StudentProfile)
+            .filter(StudentProfile.student_code == identifier)
+            .first()
+        )
     if profile:
         user = db.get(User, profile.user_id)
     else:
@@ -100,20 +111,36 @@ def login(
     if not user or not verify_password(payload.password, user.hashed_password):
         pending = (
             db.query(RegistrationRequest)
-            .filter(RegistrationRequest.email == identifier.lower(), RegistrationRequest.status == RegistrationStatus.pending)
+            .filter(
+                RegistrationRequest.email == identifier.lower(),
+                RegistrationRequest.status == RegistrationStatus.pending,
+            )
             .first()
         )
         if pending:
-            raise HTTPException(status_code=403, detail="Ombi linasubiri idhini. Baada ya idhini ingia kwa namba ya usajili.")
+            raise HTTPException(
+                status_code=403,
+                detail="Ombi linasubiri idhini. Baada ya idhini ingia kwa namba ya usajili.",
+            )
         raise HTTPException(status_code=401, detail="Namba/barua pepe au nenosiri si sahihi")
 
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Akaunti haijaamilishwa.")
 
     if user.role == UserRole.student and not profile:
-        raise HTTPException(status_code=401, detail="Wanafunzi wanaingia kwa namba ya usajili, si barua pepe.")
+        raise HTTPException(
+            status_code=401,
+            detail="Wanafunzi wanaingia kwa namba ya usajili, si barua pepe.",
+        )
 
-    token = create_access_token(subject=user.id, role=user.role.value)
+    # Hakikisha relationship ipo kwa UserOut
+    try:
+        _ = user.student_profile
+        _ = user.teacher_profile
+    except Exception:
+        pass
+
+    token = create_access_token(subject=str(user.id), role=str(user.role.value))
     return TokenResponse(access_token=token, token_type="bearer", user=user)
 
 

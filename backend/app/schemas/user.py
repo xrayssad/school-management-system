@@ -12,7 +12,7 @@ class StudentProfileOut(BaseModel):
     guardian_name: str | None = None
     guardian_phone: str | None = None
     address: str | None = None
-    enrollment_date: date
+    enrollment_date: date | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -29,7 +29,7 @@ class TeacherProfileOut(BaseModel):
 
 class UserOut(BaseModel):
     id: str
-    email: EmailStr
+    email: str
     full_name: str
     role: UserRole
     phone: str | None = None
