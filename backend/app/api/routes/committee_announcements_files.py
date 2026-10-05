@@ -1,3 +1,4 @@
+from app.core.supabase_storage import normalize_public_url
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -151,7 +152,7 @@ async def create_with_attachment(
         "message": message,
         "priority": priority or "normal",
         "audience": audience or "all",
-        "attachment_url": att_url,
+        "attachment_url": normalize_public_url(att_url),
         "attachment_name": att_name,
         "attachment_type": att_type,
     }

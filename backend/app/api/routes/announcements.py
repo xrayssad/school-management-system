@@ -1,3 +1,4 @@
+from app.core.supabase_storage import normalize_public_url
 from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -122,7 +123,7 @@ def list_announcements(
                 "subject_id": d.get("subject_id"),
                 "class_name": d.get("class_name"),
                 "priority": d.get("priority") or "normal",
-                "attachment_url": relative_media_path(d.get("attachment_url")),
+                "attachment_url": normalize_public_url(relative_media_path(d.get("attachment_url"))),
                 "attachment_name": d.get("attachment_name"),
                 "attachment_type": d.get("attachment_type"),
                 "audience": d.get("audience") or "all",
@@ -152,7 +153,7 @@ def create_announcement(
         "subject_id": getattr(a, "subject_id", None),
         "class_name": getattr(a, "class_name", None),
         "priority": a.priority,
-        "attachment_url": relative_media_path(getattr(a, "attachment_url", None)),
+        "attachment_url": normalize_public_url(relative_media_path(getattr(a), "attachment_url", None)),
         "attachment_name": getattr(a, "attachment_name", None),
         "attachment_type": getattr(a, "attachment_type", None),
         "audience": getattr(a, "audience", None) or "all",
