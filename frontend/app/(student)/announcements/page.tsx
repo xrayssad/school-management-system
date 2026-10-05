@@ -1,4 +1,6 @@
 "use client";
+import { mediaUrl } from "@/lib/media";
+
 
 function mediaUrl(url?: string | null) {
   if (!url) return null;

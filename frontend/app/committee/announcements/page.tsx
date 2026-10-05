@@ -1,31 +1,14 @@
 "use client";
 
-function mediaUrl(url?: string | null) {
-  if (!url) return null;
-  const u = String(url).trim();
-  if (u.includes("onrender.com/storage/")) {
-    return "https://cfyscarmbfpfjkvgymxr.supabase.co/storage/" + u.split("/storage/")[1];
-  }
-  if (u.startsWith("http://") || u.startsWith("https://")) return u;
-  if (u.startsWith("/storage/") || u.startsWith("storage/")) {
-    const p = u.startsWith("/") ? u : "/" + u;
-    return "https://cfyscarmbfpfjkvgymxr.supabase.co" + p;
-  }
-  if (u.startsWith("/uploads")) {
-    return "https://madrasatulhabibielmustwafa-api.onrender.com" + u;
-  }
-  return u;
-}
-
-
-import { apiUrl, mediaUrl } from "@/lib/media";
+import { FormEvent, useEffect, useState } from "react";
+import { Megaphone, Paperclip, Send, Trash2 } from "lucide-react";
+import { colors } from "@/lib/colors";
+import { mediaUrl } from "@/lib/media";
 import MadrasaLoader from "@/components/MadrasaLoader";
 
-import { FormEvent, useEffect, useState } from "react";
-import { Megaphone, Paperclip, Send } from "lucide-react";
-import { colors } from "@/lib/colors";
-
-const API = apiUrl();
+const API =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "https://madrasatulhabibielmustwafa-api.onrender.com/api";
 
 type Ann = {
   id: string;
@@ -61,7 +44,6 @@ export default function CommitteeAnnouncementsPage() {
         headers: { Authorization: `Bearer ${token()}` },
       });
       if (!res.ok) {
-        // fallback general list
         const res2 = await fetch(`${API}/announcements`, {
           headers: { Authorization: `Bearer ${token()}` },
         });
@@ -78,29 +60,36 @@ export default function CommitteeAnnouncementsPage() {
     }
   }
 
-  
-  async function removeAnn(id: string) {
-    if (!confirm("Futa tangazo hili? Litaondolewa kwa wanafunzi na walimu wote.")) return;
-    try {
-      const res = await fetch(`${API}/committee/announcements/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${localStorage.getItem("madrasa_token") || ""}` },
-      });
-      if (!res.ok) {
-        const b = await res.json().catch(() => ({}));
-        alert(typeof b.detail === "string" ? b.detail : "Imeshindikana kufuta");
-        return;
-      }
-      setItems((prev: any) => (Array.isArray(prev) ? prev.filter((x: any) => x.id !== id) : prev));
-      if (typeof load === "function") await load();
-    } catch (e: any) {
-      alert(e?.message || "Error");
-    }
-  }
-
   useEffect(() => {
     load();
   }, []);
+
+  async function removeAnn(id: string) {
+    if (
+      !confirm(
+        "Futa tangazo hili? Litaondolewa kwa wanafunzi na walimu wote."
+      )
+    ) {
+      return;
+    }
+    setError("");
+    try {
+      const res = await fetch(`${API}/committee/announcements/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token() || ""}` },
+      });
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        setError(
+          typeof b.detail === "string" ? b.detail : "Imeshindikana kufuta"
+        );
+        return;
+      }
+      setItems((prev) => prev.filter((x) => x.id !== id));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Imeshindikana");
+    }
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -120,96 +109,201 @@ export default function CommitteeAnnouncementsPage() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(typeof body.detail === "string" ? body.detail : "Imeshindikana kutuma");
+        setError(
+          typeof body.detail === "string"
+            ? body.detail
+            : "Imeshindikana kutuma"
+        );
+        return;
       }
       setSuccess("Tangazo limetumwa");
       setTitle("");
       setMessage("");
       setFile(null);
       await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Imeshindikana");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Imeshindikana");
     } finally {
       setSaving(false);
     }
   }
 
-  function attHref(url?: string | null) {
-    return mediaUrl(url);
-  }
-
   if (loading) return <MadrasaLoader />;
 
-  
   return (
     <div>
-      <h1 className="font-serif text-2xl font-semibold" style={{ color: colors.primary }}>
+      <h1
+        className="font-serif text-2xl font-semibold"
+        style={{ color: colors.primary }}
+      >
         Matangazo
       </h1>
       <p className="mt-1 text-sm" style={{ color: colors.stone }}>
         Tuma ujumbe kwa wanafunzi / walimu — unaweza kuambatanisha PDF au picha
       </p>
 
-      <form onSubmit={onSubmit} className="mt-6 space-y-3 rounded-xl border bg-white p-4" style={{ borderColor: colors.line }}>
+      <form
+        onSubmit={onSubmit}
+        className="mt-6 space-y-3 rounded-xl border bg-white p-4"
+        style={{ borderColor: colors.line }}
+      >
         <div>
-          <label className="mb-1 block text-xs font-semibold" style={{ color: colors.primary }}>Kichwa</label>
-          <input required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded-lg border px-3 py-2 text-sm" style={{ borderColor: colors.line }} />
+          <label
+            className="mb-1 block text-xs font-semibold"
+            style={{ color: colors.primary }}
+          >
+            Kichwa
+          </label>
+          <input
+            required
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full rounded-lg border px-3 py-2 text-sm"
+            style={{ borderColor: colors.line }}
+          />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-semibold" style={{ color: colors.primary }}>Ujumbe</label>
-          <textarea required rows={4} value={message} onChange={(e) => setMessage(e.target.value)} className="w-full rounded-lg border px-3 py-2 text-sm" style={{ borderColor: colors.line }} />
+          <label
+            className="mb-1 block text-xs font-semibold"
+            style={{ color: colors.primary }}
+          >
+            Ujumbe
+          </label>
+          <textarea
+            required
+            rows={4}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            className="w-full rounded-lg border px-3 py-2 text-sm"
+            style={{ borderColor: colors.line }}
+          />
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs font-semibold" style={{ color: colors.primary }}>Hadhir</label>
-            <select value={audience} onChange={(e) => setAudience(e.target.value)} className="w-full rounded-lg border px-3 py-2 text-sm" style={{ borderColor: colors.line }}>
+            <label
+              className="mb-1 block text-xs font-semibold"
+              style={{ color: colors.primary }}
+            >
+              Hadhira
+            </label>
+            <select
+              value={audience}
+              onChange={(e) => setAudience(e.target.value)}
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              style={{ borderColor: colors.line }}
+            >
               <option value="all">Wote (wanafunzi + walimu)</option>
               <option value="students">Wanafunzi tu</option>
               <option value="teachers">Walimu tu</option>
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-semibold" style={{ color: colors.primary }}>Kiambatisho (PDF / picha)</label>
-            <input type="file" accept=".pdf,image/png,image/jpeg,image/webp" onChange={(e) => setFile(e.target.files?.[0] || null)} className="block w-full text-sm" />
+            <label
+              className="mb-1 block text-xs font-semibold"
+              style={{ color: colors.primary }}
+            >
+              Kiambatisho (PDF / picha)
+            </label>
+            <input
+              type="file"
+              accept=".pdf,image/png,image/jpeg,image/webp"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              className="block w-full text-sm"
+            />
           </div>
         </div>
         {error && <p className="text-sm text-red-700">{error}</p>}
-        {success && <p className="text-sm" style={{ color: colors.primary }}>{success}</p>}
-        <button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" style={{ backgroundColor: colors.primary }}>
+        {success && (
+          <p className="text-sm" style={{ color: colors.primary }}>
+            {success}
+          </p>
+        )}
+        <button
+          type="submit"
+          disabled={saving}
+          className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          style={{ backgroundColor: colors.primary }}
+        >
           <Send size={14} /> {saving ? "Inatuma…" : "Tuma tangazo"}
         </button>
       </form>
 
       <div className="mt-8 space-y-3">
-        {loading && <p className="text-sm" style={{ color: colors.stone }}>…</p>}
-        {items.map((a) => (
-          <article key={a.id} className="rounded-xl border bg-white p-4" style={{ borderColor: colors.line }}>
-            <div className="flex items-start gap-2">
-              <Megaphone size={16} style={{ color: colors.primary }} />
-              <div className="min-w-0 flex-1">
-                <h3 className="font-semibold" style={{ color: colors.ink }}>{a.title}
-                <button type="button" onClick={() => removeAnn(a.id)} className="ml-2 text-xs text-red-700 underline">Futa</button></h3>
-                <p className="mt-1 whitespace-pre-wrap text-sm" style={{ color: colors.stone }}>{a.message}</p>
-                {a.attachment_url && (
-                  <a
-                    href={attHref(a.attachment_url) || "#"}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-2 inline-flex items-center gap-1 text-sm font-medium underline"
-                    style={{ color: colors.primary }}
+        {items.length === 0 && (
+          <p className="text-sm" style={{ color: colors.stone }}>
+            Hakuna matangazo.
+          </p>
+        )}
+        {items.map((a) => {
+          const href = mediaUrl(a.attachment_url);
+          const isImg =
+            (a.attachment_type || "").includes("image") ||
+            /\.(png|jpe?g|webp|gif)$/i.test(a.attachment_url || "");
+          return (
+            <article
+              key={a.id}
+              className="rounded-xl border bg-white p-4"
+              style={{ borderColor: colors.line }}
+            >
+              <div className="flex items-start gap-2">
+                <Megaphone size={16} style={{ color: colors.primary }} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <h3
+                      className="font-semibold"
+                      style={{ color: colors.ink }}
+                    >
+                      {a.title}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => removeAnn(a.id)}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700"
+                    >
+                      <Trash2 size={12} />
+                      Futa
+                    </button>
+                  </div>
+                  <p
+                    className="mt-1 whitespace-pre-wrap text-sm"
+                    style={{ color: colors.stone }}
                   >
-                    <Paperclip size={14} />
-                    {a.attachment_name || "Kiambatisho"}
-                  </a>
-                )}
-                <p className="mt-2 text-xs" style={{ color: colors.stone }}>
-                  {a.audience || "all"}
-                  {a.created_at ? ` · ${new Date(a.created_at).toLocaleString("sw-TZ")}` : ""}
-                </p>
+                    {a.message}
+                  </p>
+                  {href && isImg && (
+                    <a href={href} target="_blank" rel="noreferrer">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={href}
+                        alt={a.attachment_name || "Picha"}
+                        className="mt-3 max-h-56 rounded-lg border object-contain"
+                        style={{ borderColor: colors.line }}
+                      />
+                    </a>
+                  )}
+                  {href && !isImg && (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex items-center gap-1 text-sm font-medium underline"
+                      style={{ color: colors.primary }}
+                    >
+                      <Paperclip size={14} />
+                      {a.attachment_name || "Kiambatisho"}
+                    </a>
+                  )}
+                  <p className="mt-2 text-xs" style={{ color: colors.stone }}>
+                    {a.audience || "all"}
+                    {a.created_at
+                      ? ` · ${new Date(a.created_at).toLocaleString("sw-TZ")}`
+                      : ""}
+                  </p>
+                </div>
               </div>
-            </div>
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </div>
     </div>
   );
