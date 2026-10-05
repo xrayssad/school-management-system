@@ -30,3 +30,11 @@ export function mediaUrl(path?: string | null): string | null {
   }
   return `${apiOrigin()}${p.startsWith("/") ? p : `/${p}`}`;
 }
+
+/** API base including /api (for fetch calls). */
+export function apiUrl(path: string = ""): string {
+  const base = (process.env.NEXT_PUBLIC_API_URL || "https://madrasatulhabibielmustwafa-api.onrender.com/api").replace(/\/$/, "");
+  if (!path) return base;
+  return path.startsWith("/") ? base + path : base + "/" + path;
+}
+
