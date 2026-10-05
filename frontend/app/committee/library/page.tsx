@@ -1,6 +1,6 @@
 "use client";
 
-import { apiUrl } from "@/lib/media";
+import { apiUrl, mediaUrl } from "@/lib/media";
 
 import MadrasaLoader from "@/components/MadrasaLoader";
 
