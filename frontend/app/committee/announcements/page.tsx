@@ -2,20 +2,19 @@
 
 function mediaUrl(url?: string | null) {
   if (!url) return null;
-  const u = url.trim();
-  if (u.startsWith("https://") || u.startsWith("http://")) {
-    if (u.includes("onrender.com/storage/")) {
-      const path = u.split("/storage/")[1];
-      return `https://cfyscarmbfpfjkvgymxr.supabase.co/storage/${path}`;
-    }
-    return u;
+  const u = String(url).trim();
+  if (u.includes("onrender.com/storage/")) {
+    return "https://cfyscarmbfpfjkvgymxr.supabase.co/storage/" + u.split("/storage/")[1];
   }
+  if (u.startsWith("http://") || u.startsWith("https://")) return u;
   if (u.startsWith("/storage/") || u.startsWith("storage/")) {
-    const path = u.startsWith("/") ? u : `/${u}`;
-    return `https://cfyscarmbfpfjkvgymxr.supabase.co${path}`;
+    const p = u.startsWith("/") ? u : "/" + u;
+    return "https://cfyscarmbfpfjkvgymxr.supabase.co" + p;
   }
-  const api = (process.env.NEXT_PUBLIC_API_URL || "https://madrasatulhabibielmustwafa-api.onrender.com/api").replace(/\/api\/?$/, "");
-  return u.startsWith("/") ? api + u : api + "/" + u;
+  if (u.startsWith("/uploads")) {
+    return "https://madrasatulhabibielmustwafa-api.onrender.com" + u;
+  }
+  return u;
 }
 
 

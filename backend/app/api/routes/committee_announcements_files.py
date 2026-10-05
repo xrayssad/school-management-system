@@ -1,4 +1,3 @@
-from app.core.supabase_storage import normalize_public_url
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -8,32 +7,17 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_role
-from app.api.routes.announcements import relative_media_path
-from app.core.uploads import uploads_dir
 from app.db.session import get_db
 from app.models.user import User, UserRole
-
-
-def _normalize_ann_list(items):
-    out = []
-    for it in items:
-        d = dict(it) if not isinstance(it, dict) else dict(it)
-        if d.get("attachment_url"):
-            try:
-                from app.core.supabase_storage import normalize_public_url
-                d["attachment_url"] = normalize_public_url(d["attachment_url"])
-            except Exception:
-                u = d["attachment_url"]
-                if u and u.startswith("/storage/"):
-                    d["attachment_url"] = "https://cfyscarmbfpfjkvgymxr.supabase.co" + u
-        out.append(d)
-    return _normalize_ann_list(out) if isinstance(out, list) else out
-
+from app.core.supabase_storage import (
+    storage_configured,
+    upload_bytes,
+    normalize_public_url,
+)
 
 router = APIRouter(prefix="/committee/announcements", tags=["committee-announcements"])
 require_committee = require_role(UserRole.committee, UserRole.admin)
 
-UPLOAD = uploads_dir("announcements")
 ALLOWED = {".pdf", ".png", ".jpg", ".jpeg", ".webp"}
 
 
@@ -51,18 +35,13 @@ def _save_file(file: UploadFile) -> tuple[str, str, str]:
         ct = "image/png"
     elif ext == ".webp":
         ct = "image/webp"
-    from app.core.supabase_storage import storage_configured, upload_bytes
     if not storage_configured():
-        raise HTTPException(
-            status_code=503,
-            detail="Storage haijasanidiwa: weka SUPABASE_URL na SUPABASE_SERVICE_ROLE_KEY kwenye Render",
-        )
+        raise HTTPException(503, detail="Weka SUPABASE_URL na SUPABASE_SERVICE_ROLE_KEY kwenye Render")
     try:
         url = upload_bytes(data, "announcements", name, ct)
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Imeshindikana kupakia kwenye Storage: {e}") from e
+        raise HTTPException(502, detail=f"Storage: {e}") from e
     return url, name, kind
-
 
 
 @router.post("/with-attachment")
@@ -81,8 +60,6 @@ async def create_with_attachment(
 
     aid = str(uuid.uuid4())
     now = datetime.utcnow()
-
-    # Optional columns (ignore if already exist)
     for stmt in [
         "ALTER TABLE announcements ADD COLUMN IF NOT EXISTS attachment_url VARCHAR(500)",
         "ALTER TABLE announcements ADD COLUMN IF NOT EXISTS attachment_name VARCHAR(255)",
@@ -95,29 +72,6 @@ async def create_with_attachment(
         except Exception:
             db.rollback()
 
-    # Full insert — priority NOT NULL + common fields
-    attempts = [
-        """
-        INSERT INTO announcements (
-          id, title, message, priority, audience,
-          attachment_url, attachment_name, attachment_type, created_at
-        ) VALUES (
-          :id, :title, :message, :priority, :audience,
-          :url, :aname, :atype, :created_at
-        )
-        """,
-        """
-        INSERT INTO announcements (
-          id, title, message, priority, created_at
-        ) VALUES (
-          :id, :title, :message, :priority, :created_at
-        )
-        """,
-        """
-        INSERT INTO announcements (id, title, message, priority)
-        VALUES (:id, :title, :message, :priority)
-        """,
-    ]
     params = {
         "id": aid,
         "title": title,
@@ -129,39 +83,25 @@ async def create_with_attachment(
         "atype": att_type,
         "created_at": now,
     }
-    last_err = None
-    for sql in attempts:
+    for sql in [
+        """INSERT INTO announcements (
+            id, title, message, priority, audience,
+            attachment_url, attachment_name, attachment_type, created_at
+          ) VALUES (
+            :id, :title, :message, :priority, :audience,
+            :url, :aname, :atype, :created_at
+          )""",
+        """INSERT INTO announcements (id, title, message, priority, created_at)
+           VALUES (:id, :title, :message, :priority, :created_at)""",
+    ]:
         try:
             db.execute(text(sql), params)
             db.commit()
-            # if minimal insert, try update attachments
-            if "attachment_url" not in sql and att_url:
-                try:
-                    db.execute(
-                        text(
-                            """
-                            UPDATE announcements SET
-                              attachment_url = :url,
-                              attachment_name = :aname,
-                              attachment_type = :atype,
-                              audience = :audience
-                            WHERE id = :id
-                            """
-                        ),
-                        params,
-                    )
-                    db.commit()
-                except Exception:
-                    db.rollback()
-            last_err = None
             break
-        except Exception as e:
+        except Exception:
             db.rollback()
-            last_err = e
-            continue
-
-    if last_err is not None:
-        raise HTTPException(status_code=500, detail=f"Insert failed: {last_err}")
+    else:
+        raise HTTPException(500, detail="Imeshindikana kuhifadhi tangazo")
 
     return {
         "id": aid,
@@ -172,6 +112,7 @@ async def create_with_attachment(
         "attachment_url": normalize_public_url(att_url),
         "attachment_name": att_name,
         "attachment_type": att_type,
+        "created_at": now.isoformat() + "Z",
     }
 
 
@@ -181,14 +122,12 @@ def list_committee(db: Session = Depends(get_db), _: User = Depends(require_comm
         rows = db.execute(
             text("SELECT * FROM announcements ORDER BY created_at DESC NULLS LAST LIMIT 100")
         ).mappings().all()
-        out = [dict(r) for r in rows]
-    except Exception:
+    except Exception as e:
         db.rollback()
-        rows = db.execute(
-            text("SELECT id, title, message, priority FROM announcements LIMIT 100")
-        ).mappings().all()
-        out = [dict(r) for r in rows]
-    for item in out:
-        if item.get("attachment_url"):
-            item["attachment_url"] = relative_media_path(item["attachment_url"])
-    return _normalize_ann_list(out) if isinstance(out, list) else out
+        raise HTTPException(500, detail=f"list: {e}") from e
+    out = []
+    for r in rows:
+        d = dict(r)
+        d["attachment_url"] = normalize_public_url(d.get("attachment_url"))
+        out.append(d)
+    return out

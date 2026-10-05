@@ -1,4 +1,3 @@
-from app.core.supabase_storage import normalize_public_url
 from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -8,93 +7,9 @@ from app.db.session import get_db
 from app.models.communication import Announcement
 from app.models.user import User, UserRole, TeacherProfile
 from app.schemas.communication import AnnouncementCreate
-
-
-def _normalize_ann_list(items):
-    out = []
-    for it in items:
-        d = dict(it) if not isinstance(it, dict) else dict(it)
-        if d.get("attachment_url"):
-            try:
-                from app.core.supabase_storage import normalize_public_url
-                d["attachment_url"] = normalize_public_url(d["attachment_url"])
-            except Exception:
-                u = d["attachment_url"]
-                if u and u.startswith("/storage/"):
-                    d["attachment_url"] = "https://cfyscarmbfpfjkvgymxr.supabase.co" + u
-        out.append(d)
-    return _normalize_ann_list(out) if isinstance(out, list) else out
-
+from app.core.supabase_storage import normalize_public_url
 
 router = APIRouter(prefix="/announcements", tags=["announcements"])
-
-_ATTACH_COLS = "attachment_url, attachment_name, attachment_type, audience"
-_BASE_COLS = "id, title, message, teacher_id, subject_id, class_name, priority, created_at"
-
-
-def relative_media_path(url: str | None) -> str | None:
-    """Normalise a stored media value to a relative "/uploads/..." path.
-
-    Strips any origin (localhost, vercel.app, production) and any stray
-    "/api" prefix so the frontend can rebuild the host from one place.
-    """
-    if not url:
-        return None
-    value = str(url).strip()
-    if not value:
-        return None
-    query = ""
-    if value.startswith("http://") or value.startswith("https://"):
-        from urllib.parse import urlparse
-
-        parsed = urlparse(value)
-        path = parsed.path or ""
-        query = parsed.query
-    else:
-        path = value
-    if path == "/api":
-        path = "/"
-    elif path.startswith("/api/"):
-        path = path[4:]
-    elif path.startswith("api/"):
-        path = "/" + path[4:]
-    if not path.startswith("/"):
-        path = f"/{path}"
-    return f"{path}?{query}" if query else path
-
-
-def _fetch_rows(db: Session) -> list:
-    try:
-        return (
-            db.execute(
-                text(
-                    f"""
-                    SELECT {_BASE_COLS}, {_ATTACH_COLS}
-                    FROM announcements
-                    ORDER BY created_at DESC NULLS LAST
-                    LIMIT 100
-                    """
-                )
-            )
-            .mappings()
-            .all()
-        )
-    except Exception:
-        db.rollback()
-        return (
-            db.execute(
-                text(
-                    f"""
-                    SELECT {_BASE_COLS}
-                    FROM announcements
-                    ORDER BY created_at DESC NULLS LAST
-                    LIMIT 100
-                    """
-                )
-            )
-            .mappings()
-            .all()
-        )
 
 
 @router.get("")
@@ -103,8 +18,30 @@ def list_announcements(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Return announcements including attachment_* from DB (raw SQL)."""
-    rows = _fetch_rows(db)
+    try:
+        rows = db.execute(
+            text(
+                """
+                SELECT id, title, message, teacher_id, subject_id, class_name, priority,
+                       attachment_url, attachment_name, attachment_type, audience, created_at
+                FROM announcements
+                ORDER BY created_at DESC NULLS LAST
+                LIMIT 100
+                """
+            )
+        ).mappings().all()
+    except Exception:
+        db.rollback()
+        rows = db.execute(
+            text(
+                """
+                SELECT id, title, message, priority, created_at
+                FROM announcements
+                ORDER BY created_at DESC NULLS LAST
+                LIMIT 100
+                """
+            )
+        ).mappings().all()
 
     target_class = class_name
     if not target_class and getattr(current_user, "student_profile", None):
@@ -113,22 +50,24 @@ def list_announcements(
     result = []
     for r in rows:
         d = dict(r)
-        # class filter: show if null class or matches student class
         cn = d.get("class_name")
         if target_class and cn and cn != target_class:
             continue
-        aud = (d.get("audience") or "all") or "all"
-        aud = str(aud).lower()
+        aud = str((d.get("audience") or "all") or "all").lower()
         if current_user.role == UserRole.student and aud == "teachers":
             continue
         if current_user.role == UserRole.teacher and aud == "students":
             continue
 
         teacher_name = None
-        if d.get("teacher_id"):
-            tp = db.get(TeacherProfile, d["teacher_id"])
-            if tp is not None and getattr(tp, "user", None) is not None:
-                teacher_name = tp.user.full_name
+        tid = d.get("teacher_id")
+        if tid:
+            try:
+                tp = db.get(TeacherProfile, tid)
+                if tp is not None and getattr(tp, "user", None) is not None:
+                    teacher_name = tp.user.full_name
+            except Exception:
+                pass
 
         result.append(
             {
@@ -140,14 +79,14 @@ def list_announcements(
                 "subject_id": d.get("subject_id"),
                 "class_name": d.get("class_name"),
                 "priority": d.get("priority") or "normal",
-                "attachment_url": normalize_public_url(relative_media_path(d.get("attachment_url"))),
+                "attachment_url": normalize_public_url(d.get("attachment_url")),
                 "attachment_name": d.get("attachment_name"),
                 "attachment_type": d.get("attachment_type"),
                 "audience": d.get("audience") or "all",
                 "created_at": d.get("created_at"),
             }
         )
-    return _normalize_ann_list(result) if isinstance(result, list) else result
+    return result
 
 
 @router.post("", dependencies=[Depends(require_teacher)])
@@ -170,7 +109,7 @@ def create_announcement(
         "subject_id": getattr(a, "subject_id", None),
         "class_name": getattr(a, "class_name", None),
         "priority": a.priority,
-        "attachment_url": normalize_public_url(relative_media_path(getattr(a), "attachment_url", None)),
+        "attachment_url": normalize_public_url(getattr(a, "attachment_url", None)),
         "attachment_name": getattr(a, "attachment_name", None),
         "attachment_type": getattr(a, "attachment_type", None),
         "audience": getattr(a, "audience", None) or "all",
