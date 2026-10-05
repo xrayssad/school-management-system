@@ -1,67 +1,74 @@
-
 from __future__ import annotations
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from app.api.deps import require_role
+from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User, UserRole
 
 router = APIRouter(prefix="/student", tags=["student-profile"])
 
+
 @router.get("/my-profile")
-def my_profile(db: Session = Depends(get_db), user: User = Depends(require_role(UserRole.student))):
-    sp = db.execute(text("""
-        SELECT student_code, class_name, guardian_name, guardian_phone, address,
-               promotion_status, promotion_term, promotion_note, enrollment_date
-        FROM student_profiles WHERE user_id = :u
-    """), {"u": user.id}).mappings().first()
+def my_profile(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if user.role != UserRole.student:
+        raise HTTPException(403, "Kwa wanafunzi tu")
 
-    guardian_name = sp["guardian_name"] if sp else None
-    guardian_phone = sp["guardian_phone"] if sp else None
+    sp = db.execute(
+        text("SELECT id, student_code, class_name FROM student_profiles WHERE user_id = :u"),
+        {"u": user.id},
+    ).mappings().first()
 
-    # Fallback: registration_requests (jina la mzazi/mlezi)
-    if not guardian_name or not guardian_phone:
-        rr = db.execute(text("""
-            SELECT guardian_name, guardian_phone FROM registration_requests
-            WHERE lower(email) = lower(:e)
-            ORDER BY created_at DESC NULLS LAST
-            LIMIT 1
-        """), {"e": user.email}).mappings().first()
-        if not rr and sp and sp.get("student_code"):
-            rr = db.execute(text("""
-                SELECT guardian_name, guardian_phone FROM registration_requests
-                WHERE student_code = :c
-                ORDER BY created_at DESC NULLS LAST LIMIT 1
-            """), {"c": sp["student_code"]}).mappings().first()
-        if rr:
-            guardian_name = guardian_name or rr["guardian_name"]
-            guardian_phone = guardian_phone or rr["guardian_phone"]
-            # optional persist
-            if sp and (rr["guardian_name"] or rr["guardian_phone"]):
-                db.execute(text("""
-                    UPDATE student_profiles SET
-                      guardian_name = COALESCE(NULLIF(guardian_name,''), :gn),
-                      guardian_phone = COALESCE(NULLIF(guardian_phone,''), :gp)
-                    WHERE user_id = :u
-                """), {"gn": rr["guardian_name"], "gp": rr["guardian_phone"], "u": user.id})
-                db.commit()
+    extra = {}
+    if sp:
+        for cols in [
+            "guardian_name, guardian_phone, address, enrollment_date",
+            "guardian_name, guardian_phone",
+            "",
+        ]:
+            if not cols:
+                break
+            try:
+                row = db.execute(
+                    text(f"SELECT {cols} FROM student_profiles WHERE id = :id"),
+                    {"id": sp["id"]},
+                ).mappings().first()
+                if row:
+                    extra = dict(row)
+                break
+            except Exception:
+                db.rollback()
+
+        for cols in [
+            "promotion_status, promotion_term, promotion_note",
+            "",
+        ]:
+            if not cols:
+                break
+            try:
+                row = db.execute(
+                    text(f"SELECT {cols} FROM student_profiles WHERE id = :id"),
+                    {"id": sp["id"]},
+                ).mappings().first()
+                if row:
+                    extra.update(dict(row))
+                break
+            except Exception:
+                db.rollback()
 
     return {
         "id": user.id,
-        "full_name": user.full_name,
         "email": user.email,
-        "phone": user.phone,
+        "full_name": user.full_name,
+        "phone": getattr(user, "phone", None),
         "role": user.role.value if hasattr(user.role, "value") else str(user.role),
-        "student_code": sp["student_code"] if sp else None,
-        "class_name": sp["class_name"] if sp else None,
-        "guardian_name": guardian_name,
-        "guardian_phone": guardian_phone,
-        "promotion_status": sp["promotion_status"] if sp else None,
-        "promotion_note": sp["promotion_note"] if sp else None,
-        "student_profile": {
-            **(dict(sp) if sp else {}),
-            "guardian_name": guardian_name,
-            "guardian_phone": guardian_phone,
-        },
+        "student_code": sp.get("student_code") if sp else None,
+        "class_name": sp.get("class_name") if sp else None,
+        "guardian_name": extra.get("guardian_name"),
+        "guardian_phone": extra.get("guardian_phone"),
+        "address": extra.get("address"),
+        "enrollment_date": extra.get("enrollment_date"),
+        "promotion_status": extra.get("promotion_status"),
+        "promotion_term": extra.get("promotion_term"),
+        "promotion_note": extra.get("promotion_note"),
     }
