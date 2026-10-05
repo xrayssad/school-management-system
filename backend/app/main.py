@@ -9,6 +9,57 @@ from app.core.uploads import UPLOADS_ROOT
 from app.db.base import Base
 from app.db.session import engine
 
+
+def _ensure_student_profile_columns():
+    """promotion_* required by /student/my-grades and /student/my-profile."""
+    try:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn = conn.execution_options(isolation_level="AUTOCOMMIT")
+            for col, typ in [
+                ("promotion_status", "VARCHAR(30)"),
+                ("promotion_term", "VARCHAR(50)"),
+                ("promotion_note", "TEXT"),
+                ("guardian_name", "VARCHAR(255)"),
+                ("guardian_phone", "VARCHAR(50)"),
+                ("enrollment_date", "DATE"),
+            ]:
+                try:
+                    conn.execute(text(
+                        f"ALTER TABLE student_profiles ADD COLUMN IF NOT EXISTS {col} {typ}"
+                    ))
+                    print("student_profiles col ok:", col)
+                except Exception as e:
+                    print("student_profiles col skip:", col, e)
+    except Exception as e:
+        print("ensure_student_profile_columns:", e)
+
+
+def _ensure_library_table():
+    try:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn = conn.execution_options(isolation_level="AUTOCOMMIT")
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS library_items (
+                    id VARCHAR(36) PRIMARY KEY,
+                    title VARCHAR(255),
+                    description TEXT,
+                    item_type VARCHAR(50),
+                    class_name VARCHAR(100),
+                    subject_name VARCHAR(120),
+                    term VARCHAR(50),
+                    file_url VARCHAR(500),
+                    file_name VARCHAR(255),
+                    uploaded_by_id VARCHAR(36),
+                    created_at TIMESTAMP
+                )
+            """))
+            print("library_items ok")
+    except Exception as e:
+        print("ensure_library:", e)
+
+
 def _ensure_fee_columns():
     """Add student_fees columns if missing (production schema drift)."""
     try:

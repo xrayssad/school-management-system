@@ -47,7 +47,7 @@ def my_results(
         text(
             """
             SELECT sp.id, sp.student_code, sp.class_name,
-                   sp.promotion_status, sp.promotion_term, sp.promotion_note
+                   sp.student_code, sp.class_name
             FROM student_profiles sp WHERE sp.user_id = :u
             """
         ),
