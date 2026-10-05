@@ -23,11 +23,28 @@ def _save_file(file: UploadFile) -> tuple[str, str, str]:
     ext = Path(file.filename or "file.bin").suffix.lower()
     if ext not in ALLOWED:
         raise HTTPException(status_code=400, detail="Ruhusiwa: PDF, PNG, JPG, WEBP")
-    name = f"{uuid.uuid4().hex}{ext}"
-    dest = UPLOAD / name
-    dest.write_bytes(file.file.read())
+    data = file.file.read()
     kind = "pdf" if ext == ".pdf" else "image"
-    return f"/uploads/announcements/{name}", (file.filename or name), kind
+    name = file.filename or f"file{ext}"
+    ct = "application/pdf" if ext == ".pdf" else "application/octet-stream"
+    if ext in (".jpg", ".jpeg"):
+        ct = "image/jpeg"
+    elif ext == ".png":
+        ct = "image/png"
+    elif ext == ".webp":
+        ct = "image/webp"
+    from app.core.supabase_storage import storage_configured, upload_bytes
+    if not storage_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="Storage haijasanidiwa: weka SUPABASE_URL na SUPABASE_SERVICE_ROLE_KEY kwenye Render",
+        )
+    try:
+        url = upload_bytes(data, "announcements", name, ct)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Imeshindikana kupakia kwenye Storage: {e}") from e
+    return url, name, kind
+
 
 
 @router.post("/with-attachment")

@@ -44,10 +44,21 @@ def _save(file: UploadFile) -> tuple[str, str]:
     ext = Path(file.filename or "file.pdf").suffix.lower() or ".pdf"
     if ext not in ALLOWED:
         raise HTTPException(400, detail="Ruhusiwa: PDF, DOC, DOCX, EPUB")
-    name = f"{uuid.uuid4().hex}{ext}"
-    dest = UPLOAD / name
-    dest.write_bytes(file.file.read())
-    return f"/uploads/library/{name}", file.filename or name
+    data = file.file.read()
+    name = file.filename or f"file{ext}"
+    ct = "application/pdf" if ext == ".pdf" else "application/octet-stream"
+    from app.core.supabase_storage import storage_configured, upload_bytes
+    if not storage_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="Storage haijasanidiwa: SUPABASE_URL / SERVICE_ROLE_KEY kwenye Render",
+        )
+    try:
+        url = upload_bytes(data, "library", name, ct)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Storage: {e}") from e
+    return url, name
+
 
 
 @router.get("")

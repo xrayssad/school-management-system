@@ -12,6 +12,7 @@ class Settings(BaseSettings):
 
     SUPABASE_URL: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = ""
+    SUPABASE_STORAGE_BUCKET: str = "madrasa-uploads"
 
     SECRET_KEY: str = "insecure-dev-key-change-me"
     ALGORITHM: str = "HS256"

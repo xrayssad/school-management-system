@@ -197,6 +197,19 @@ def on_startup():
     _ensure_grade_columns()
 
 
+
+@app.get("/api/storage-status")
+def storage_status():
+    from app.core.config import settings
+    from app.core.supabase_storage import storage_configured
+    return {
+        "configured": storage_configured(),
+        "supabase_url_set": bool((settings.SUPABASE_URL or "").strip()),
+        "service_key_set": bool((settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()),
+        "bucket": settings.SUPABASE_STORAGE_BUCKET or "madrasa-uploads",
+    }
+
+
 @app.get("/api/health")
 def health_check():
     return {"status": "ok", "service": settings.PROJECT_NAME}
