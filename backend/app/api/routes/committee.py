@@ -1,6 +1,6 @@
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import text, func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_committee,  require_role
@@ -380,3 +380,62 @@ def publish_timetable(db: Session = Depends(get_db), _: User = Depends(require_c
         r.status = PublishStatus.published
     db.commit()
     return {"updated": len(rows)}
+
+
+@router.put("/timetable/{entry_id}", response_model=TimetableOut)
+def update_timetable_entry(
+    entry_id: str,
+    body: TimetableCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_committee),
+):
+    """Kamati — rekebisha kipindi (siku, muda, somo, mwalimu, darasa)."""
+    Subject = _Subject()
+    row = db.get(CommitteeTimetableEntry, entry_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Kipindi hakipatikani")
+    if body.day_of_week == FRIDAY_DAY_OF_WEEK or body.day_of_week not in SCHOOL_DAY_OF_WEEK:
+        raise HTTPException(status_code=400, detail="Ijumaa hakuna masomo — chagua siku ya shule.")
+    sub = db.get(Subject, body.subject_id)
+    if not sub:
+        raise HTTPException(status_code=404, detail="Somo halijapatikana.")
+    tch = db.get(User, body.teacher_id)
+    if not tch or tch.role != UserRole.teacher:
+        # jaribu teacher_profiles.id
+        tp = db.execute(text("SELECT user_id FROM teacher_profiles WHERE id = :id"), {"id": body.teacher_id}).first()
+        if tp:
+            tch = db.get(User, tp[0])
+        if not tch or tch.role != UserRole.teacher:
+            raise HTTPException(status_code=404, detail="Mwalimu hajapatikana.")
+    row.subject_id = body.subject_id
+    row.teacher_id = body.teacher_id
+    row.class_name = body.class_id.strip()
+    row.day_of_week = body.day_of_week
+    row.start_time = body.start_time
+    row.end_time = body.end_time
+    db.commit()
+    db.refresh(row)
+    st = row.status.value if hasattr(row.status, "value") else str(row.status)
+    return TimetableOut(
+        id=row.id, subject_id=row.subject_id, subject_name=sub.name,
+        teacher_id=row.teacher_id, teacher_name=tch.full_name,
+        class_id=row.class_name, class_name=row.class_name,
+        day_of_week=row.day_of_week,
+        day_name=DAY_NAMES[row.day_of_week] if 0 <= row.day_of_week < len(DAY_NAMES) else str(row.day_of_week),
+        start_time=row.start_time, end_time=row.end_time, status=st,
+    )
+
+
+@router.delete("/timetable/{entry_id}")
+def delete_timetable_entry(
+    entry_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_committee),
+):
+    row = db.get(CommitteeTimetableEntry, entry_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Kipindi hakipatikani")
+    db.delete(row)
+    db.commit()
+    return {"ok": True, "id": entry_id}
+
