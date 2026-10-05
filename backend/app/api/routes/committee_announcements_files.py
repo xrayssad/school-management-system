@@ -131,3 +131,22 @@ def list_committee(db: Session = Depends(get_db), _: User = Depends(require_comm
         d["attachment_url"] = normalize_public_url(d.get("attachment_url"))
         out.append(d)
     return out
+
+
+@router.delete("/{ann_id}")
+def delete_announcement(
+    ann_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_committee),
+):
+    """Kamati — futa tangazo; haionekani tena kwa wanafunzi wala walimu."""
+    row = db.execute(
+        text("SELECT id FROM announcements WHERE id = :id"),
+        {"id": ann_id},
+    ).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Tangazo halipo")
+    db.execute(text("DELETE FROM announcements WHERE id = :id"), {"id": ann_id})
+    db.commit()
+    return {"ok": True, "id": ann_id}
+

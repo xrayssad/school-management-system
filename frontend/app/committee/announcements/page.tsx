@@ -78,6 +78,26 @@ export default function CommitteeAnnouncementsPage() {
     }
   }
 
+  
+  async function removeAnn(id: string) {
+    if (!confirm("Futa tangazo hili? Litaondolewa kwa wanafunzi na walimu wote.")) return;
+    try {
+      const res = await fetch(`${API}/committee/announcements/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${localStorage.getItem("madrasa_token") || ""}` },
+      });
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        alert(typeof b.detail === "string" ? b.detail : "Imeshindikana kufuta");
+        return;
+      }
+      setItems((prev: any) => (Array.isArray(prev) ? prev.filter((x: any) => x.id !== id) : prev));
+      if (typeof load === "function") await load();
+    } catch (e: any) {
+      alert(e?.message || "Error");
+    }
+  }
+
   useEffect(() => {
     load();
   }, []);
@@ -119,6 +139,8 @@ export default function CommitteeAnnouncementsPage() {
   }
 
   if (loading) return <MadrasaLoader />;
+
+  
   return (
     <div>
       <h1 className="font-serif text-2xl font-semibold" style={{ color: colors.primary }}>
@@ -165,7 +187,8 @@ export default function CommitteeAnnouncementsPage() {
             <div className="flex items-start gap-2">
               <Megaphone size={16} style={{ color: colors.primary }} />
               <div className="min-w-0 flex-1">
-                <h3 className="font-semibold" style={{ color: colors.ink }}>{a.title}</h3>
+                <h3 className="font-semibold" style={{ color: colors.ink }}>{a.title}
+                <button type="button" onClick={() => removeAnn(a.id)} className="ml-2 text-xs text-red-700 underline">Futa</button></h3>
                 <p className="mt-1 whitespace-pre-wrap text-sm" style={{ color: colors.stone }}>{a.message}</p>
                 {a.attachment_url && (
                   <a
