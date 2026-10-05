@@ -1,5 +1,24 @@
 "use client";
 
+function mediaUrl(url?: string | null) {
+  if (!url) return null;
+  const u = url.trim();
+  if (u.startsWith("https://") || u.startsWith("http://")) {
+    if (u.includes("onrender.com/storage/")) {
+      const path = u.split("/storage/")[1];
+      return `https://cfyscarmbfpfjkvgymxr.supabase.co/storage/${path}`;
+    }
+    return u;
+  }
+  if (u.startsWith("/storage/") || u.startsWith("storage/")) {
+    const path = u.startsWith("/") ? u : `/${u}`;
+    return `https://cfyscarmbfpfjkvgymxr.supabase.co${path}`;
+  }
+  const api = (process.env.NEXT_PUBLIC_API_URL || "https://madrasatulhabibielmustwafa-api.onrender.com/api").replace(/\/api\/?$/, "");
+  return u.startsWith("/") ? api + u : api + "/" + u;
+}
+
+
 import { apiUrl, mediaUrl } from "@/lib/media";
 import MadrasaLoader from "@/components/MadrasaLoader";
 

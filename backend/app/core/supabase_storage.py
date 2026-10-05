@@ -33,23 +33,27 @@ def public_url(object_path: str) -> str:
 
 
 def normalize_public_url(url: str | None) -> str | None:
-    """Fix relative /storage/... URLs already saved in DB."""
     if not url:
         return url
-    u = url.strip()
+    u = str(url).strip()
     if u.startswith("http://") or u.startswith("https://"):
+        # Wrong host: Render instead of Supabase
+        if "onrender.com/storage/" in u:
+            path = u.split("/storage/", 1)[-1]
+            base = (settings.SUPABASE_URL or "https://cfyscarmbfpfjkvgymxr.supabase.co").rstrip("/")
+            if not base.startswith("http"):
+                base = "https://" + base
+            return f"{base}/storage/{path}"
         return u
+    base = (settings.SUPABASE_URL or "https://cfyscarmbfpfjkvgymxr.supabase.co").strip().rstrip("/")
+    if not base.startswith("http"):
+        base = "https://" + base
     if u.startswith("/storage/"):
-        try:
-            return f"{supabase_base()}{u}"
-        except Exception:
-            return u
+        return base + u
     if u.startswith("storage/"):
-        try:
-            return f"{supabase_base()}/{u}"
-        except Exception:
-            return u
+        return base + "/" + u
     return u
+
 
 
 def upload_bytes(

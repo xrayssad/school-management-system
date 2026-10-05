@@ -13,6 +13,23 @@ from app.core.uploads import uploads_dir
 from app.db.session import get_db
 from app.models.user import User, UserRole
 
+
+def _normalize_ann_list(items):
+    out = []
+    for it in items:
+        d = dict(it) if not isinstance(it, dict) else dict(it)
+        if d.get("attachment_url"):
+            try:
+                from app.core.supabase_storage import normalize_public_url
+                d["attachment_url"] = normalize_public_url(d["attachment_url"])
+            except Exception:
+                u = d["attachment_url"]
+                if u and u.startswith("/storage/"):
+                    d["attachment_url"] = "https://cfyscarmbfpfjkvgymxr.supabase.co" + u
+        out.append(d)
+    return _normalize_ann_list(out) if isinstance(out, list) else out
+
+
 router = APIRouter(prefix="/committee/announcements", tags=["committee-announcements"])
 require_committee = require_role(UserRole.committee, UserRole.admin)
 
@@ -174,4 +191,4 @@ def list_committee(db: Session = Depends(get_db), _: User = Depends(require_comm
     for item in out:
         if item.get("attachment_url"):
             item["attachment_url"] = relative_media_path(item["attachment_url"])
-    return out
+    return _normalize_ann_list(out) if isinstance(out, list) else out

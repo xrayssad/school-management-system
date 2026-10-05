@@ -9,6 +9,23 @@ from app.models.communication import Announcement
 from app.models.user import User, UserRole, TeacherProfile
 from app.schemas.communication import AnnouncementCreate
 
+
+def _normalize_ann_list(items):
+    out = []
+    for it in items:
+        d = dict(it) if not isinstance(it, dict) else dict(it)
+        if d.get("attachment_url"):
+            try:
+                from app.core.supabase_storage import normalize_public_url
+                d["attachment_url"] = normalize_public_url(d["attachment_url"])
+            except Exception:
+                u = d["attachment_url"]
+                if u and u.startswith("/storage/"):
+                    d["attachment_url"] = "https://cfyscarmbfpfjkvgymxr.supabase.co" + u
+        out.append(d)
+    return _normalize_ann_list(out) if isinstance(out, list) else out
+
+
 router = APIRouter(prefix="/announcements", tags=["announcements"])
 
 _ATTACH_COLS = "attachment_url, attachment_name, attachment_type, audience"
@@ -130,7 +147,7 @@ def list_announcements(
                 "created_at": d.get("created_at"),
             }
         )
-    return result
+    return _normalize_ann_list(result) if isinstance(result, list) else result
 
 
 @router.post("", dependencies=[Depends(require_teacher)])
