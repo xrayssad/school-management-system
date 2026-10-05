@@ -122,10 +122,32 @@ export default function CommitteeLibraryPage() {
       </form>
 
       <div className="mt-6 space-y-2">
+        {items.length === 0 && (
+          <p className="text-sm" style={{ color: colors.stone }}>Hakuna vitabu. Pakia upya (Supabase) ili zionekane baada ya deploy.</p>
+        )}
         {items.map((it) => (
-          <div key={it.id} className="flex justify-between gap-2 rounded-xl border bg-white px-4 py-2 text-sm" style={{ borderColor: colors.line }}>
-            <span>{it.title} · {it.item_type} {it.class_name || "jumla"}</span>
-            <button type="button" onClick={() => remove(it.id)} className="text-xs text-red-700 underline">Futa</button>
+          <div key={it.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-white px-4 py-3 text-sm" style={{ borderColor: colors.line }}>
+            <div>
+              <p className="font-medium">{it.title}</p>
+              <p className="text-xs" style={{ color: colors.stone }}>{it.item_type} · {it.class_name || "jumla"}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              {mediaUrl(it.file_url) && (
+                <a href={mediaUrl(it.file_url)!} target="_blank" rel="noreferrer" className="text-xs font-medium underline" style={{ color: colors.primary }}>
+                  Fungua
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!confirm("Futa kitabu hiki kwa wote?")) return;
+                  await remove(it.id);
+                }}
+                className="rounded-lg border border-red-200 px-2 py-1 text-xs font-medium text-red-700"
+              >
+                Futa
+              </button>
+            </div>
           </div>
         ))}
       </div>

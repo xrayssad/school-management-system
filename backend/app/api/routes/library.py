@@ -1,4 +1,4 @@
-"""Maktaba: vitabu softcopy + past papers."""
+"""Maktaba: vitabu softcopy + past papers — Supabase Storage."""
 from __future__ import annotations
 
 import uuid
@@ -10,34 +10,19 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_role
-from app.core.uploads import uploads_dir
 from app.db.session import get_db
 from app.models.user import User, UserRole
-
-
-def _ensure_library_table(db: Session) -> None:
-    db.execute(text("""
-        CREATE TABLE IF NOT EXISTS library_items (
-            id VARCHAR(36) PRIMARY KEY,
-            title VARCHAR(255) NOT NULL,
-            description TEXT,
-            item_type VARCHAR(50),
-            class_name VARCHAR(100),
-            subject_name VARCHAR(120),
-            term VARCHAR(50),
-            file_url VARCHAR(500),
-            file_name VARCHAR(255),
-            uploaded_by_id VARCHAR(36),
-            created_at TIMESTAMP
-        )
-    """))
-    db.commit()
+from app.core.supabase_storage import (
+    storage_configured,
+    upload_bytes,
+    normalize_public_url,
+)
 
 router = APIRouter(prefix="/library", tags=["library"])
-UPLOAD = uploads_dir("library")
 
 ALLOWED = {".pdf", ".doc", ".docx", ".epub"}
 require_upload = require_role(UserRole.committee, UserRole.admin, UserRole.teacher)
+require_delete = require_role(UserRole.committee, UserRole.admin)
 
 
 def _save(file: UploadFile) -> tuple[str, str]:
@@ -47,18 +32,16 @@ def _save(file: UploadFile) -> tuple[str, str]:
     data = file.file.read()
     name = file.filename or f"file{ext}"
     ct = "application/pdf" if ext == ".pdf" else "application/octet-stream"
-    from app.core.supabase_storage import storage_configured, upload_bytes
     if not storage_configured():
         raise HTTPException(
-            status_code=503,
+            503,
             detail="Storage haijasanidiwa: SUPABASE_URL / SERVICE_ROLE_KEY kwenye Render",
         )
     try:
         url = upload_bytes(data, "library", name, ct)
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Storage: {e}") from e
+        raise HTTPException(502, detail=f"Storage: {e}") from e
     return url, name
-
 
 
 @router.get("")
@@ -68,7 +51,6 @@ def list_items(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Wanafunzi/walimu/kamati — orodha. Mwanafunzi anaweza kuchuja kwa darasa lake."""
     sql = "SELECT * FROM library_items WHERE 1=1"
     params: dict = {}
     if item_type in ("book", "past_paper", "other"):
@@ -78,7 +60,6 @@ def list_items(
         sql += " AND (class_name = :cn OR class_name IS NULL OR class_name = '')"
         params["cn"] = class_name
     elif user.role == UserRole.student:
-        # default: darasa lake + vitabu vya jumla
         sp = db.execute(
             text("SELECT class_name FROM student_profiles WHERE user_id = :u"),
             {"u": user.id},
@@ -92,19 +73,20 @@ def list_items(
         rows = db.execute(text(sql), params).mappings().all()
     except Exception as e:
         db.rollback()
-        try:
-            _ensure_library_table(db)
-            rows = db.execute(text(sql), params).mappings().all()
-        except Exception as e2:
-            db.rollback()
-            raise HTTPException(status_code=500, detail=f"Library error: {e2}") from e2
-    return [dict(r) for r in rows]
+        print("library list:", e)
+        return []
+    out = []
+    for r in rows:
+        d = dict(r)
+        d["file_url"] = normalize_public_url(d.get("file_url"))
+        out.append(d)
+    return out
 
 
 @router.post("/upload")
 async def upload(
     title: str = Form(...),
-    item_type: str = Form(...),  # book | past_paper | other
+    item_type: str = Form(...),
     class_name: str | None = Form(None),
     subject_name: str | None = Form(None),
     term: str | None = Form(None),
@@ -115,34 +97,37 @@ async def upload(
 ):
     if item_type not in ("book", "past_paper", "other"):
         raise HTTPException(400, detail="item_type: book, past_paper au other")
-    # vitabu vya darasa: class_name; other/book bila darasa = jumla
     url, fname = _save(file)
     iid = str(uuid.uuid4())
-    db.execute(
-        text(
-            """
-            INSERT INTO library_items
-              (id, title, description, item_type, class_name, subject_name, term,
-               file_url, file_name, uploaded_by_id, created_at)
-            VALUES
-              (:id, :title, :desc, :it, :cn, :sub, :term, :url, :fn, :uid, :ca)
-            """
-        ),
-        {
-            "id": iid,
-            "title": title.strip(),
-            "desc": description,
-            "it": item_type,
-            "cn": class_name or None,
-            "sub": subject_name,
-            "term": term,
-            "url": url,
-            "fn": fname,
-            "uid": user.id,
-            "ca": datetime.utcnow(),
-        },
-    )
-    db.commit()
+    try:
+        db.execute(
+            text(
+                """
+                INSERT INTO library_items
+                  (id, title, description, item_type, class_name, subject_name, term,
+                   file_url, file_name, uploaded_by_id, created_at)
+                VALUES
+                  (:id, :title, :desc, :it, :cn, :sub, :term, :url, :fn, :uid, :ca)
+                """
+            ),
+            {
+                "id": iid,
+                "title": title.strip(),
+                "desc": description,
+                "it": item_type,
+                "cn": class_name or None,
+                "sub": subject_name,
+                "term": term,
+                "url": url,
+                "fn": fname,
+                "uid": user.id,
+                "ca": datetime.utcnow(),
+            },
+        )
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(500, detail=f"DB: {e}") from e
     return {"ok": True, "id": iid, "file_url": url, "title": title}
 
 
@@ -150,19 +135,16 @@ async def upload(
 def delete_item(
     item_id: str,
     db: Session = Depends(get_db),
-    user: User = Depends(require_role(UserRole.committee, UserRole.admin, UserRole.teacher)),
+    user: User = Depends(require_delete),
 ):
+    """Kamati/admin tu — kufuta huondoa kwa wote."""
     row = db.execute(
-        text("SELECT file_url FROM library_items WHERE id = :id"), {"id": item_id}
-    ).first()
+        text("SELECT id, file_url FROM library_items WHERE id = :id"),
+        {"id": item_id},
+    ).mappings().first()
     if not row:
-        raise HTTPException(404, detail="Haipo")
+        raise HTTPException(404, detail="Kitabu hakipatikani")
     db.execute(text("DELETE FROM library_items WHERE id = :id"), {"id": item_id})
     db.commit()
-    try:
-        p = Path(str(row[0]).lstrip("/"))
-        if p.exists():
-            p.unlink()
-    except Exception:
-        pass
-    return {"ok": True}
+    # Faili kwenye Supabase inaweza kubaki; orodha haitalionyesha tena
+    return {"ok": True, "id": item_id}
