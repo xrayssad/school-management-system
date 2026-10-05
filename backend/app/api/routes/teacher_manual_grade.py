@@ -74,7 +74,8 @@ def save_marks(
                     text(
                         """
                         UPDATE grades SET marks_obtained = :m, grade_letter = :g,
-                          remarks = :r, graded_at = :ga, status = COALESCE(status, 'submitted')
+                          remarks = :r, graded_at = :ga,
+                          status = COALESCE(status, 'submitted')
                         WHERE id = :id
                         """
                     ),
@@ -90,7 +91,8 @@ def save_marks(
                 db.execute(
                     text(
                         """
-                        INSERT INTO grades (id, exam_id, student_id, marks_obtained, grade_letter, remarks, graded_at, status)
+                        INSERT INTO grades
+                          (id, exam_id, student_id, marks_obtained, grade_letter, remarks, graded_at, status)
                         VALUES (:id, :e, :s, :m, :g, :r, :ga, 'submitted')
                         """
                     ),
