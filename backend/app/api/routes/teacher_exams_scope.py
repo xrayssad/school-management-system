@@ -26,22 +26,49 @@ def _teacher_ids(db: Session, user: User) -> tuple[str, str | None]:
 
 
 def _class_subject_pairs(db: Session, uid: str, tid: str | None):
-    """From committee timetable: classes + subjects this teacher teaches."""
+    """Madarasa + masomo: ratiba ya Kamati na teacher_assignments."""
+    seen = set()
+    out = []
     rows = db.execute(
         text(
             """
             SELECT DISTINCT c.class_name, s.id AS subject_id, s.name AS subject_name
             FROM committee_timetable_entries c
-            LEFT JOIN subjects s ON s.id = c.subject_id
+            JOIN subjects s ON s.id = c.subject_id
             WHERE (c.teacher_id = :uid OR c.teacher_id = :tid)
               AND c.class_name IS NOT NULL
-              AND s.id IS NOT NULL
             ORDER BY c.class_name, s.name
             """
         ),
         {"uid": uid, "tid": tid or ""},
     ).mappings().all()
-    return [dict(r) for r in rows]
+    for r in rows:
+        key = (r["class_name"], r["subject_id"])
+        if key not in seen:
+            seen.add(key)
+            out.append(dict(r))
+    try:
+        rows2 = db.execute(
+            text(
+                """
+                SELECT DISTINCT ta.class_name, s.id AS subject_id, s.name AS subject_name
+                FROM teacher_assignments ta
+                JOIN subjects s ON s.id = ta.subject_id
+                WHERE (ta.teacher_id = :uid OR ta.teacher_id = :tid)
+                  AND ta.class_name IS NOT NULL
+                """
+            ),
+            {"uid": uid, "tid": tid or ""},
+        ).mappings().all()
+        for r in rows2:
+            key = (r["class_name"], r["subject_id"])
+            if key not in seen:
+                seen.add(key)
+                out.append(dict(r))
+    except Exception:
+        pass
+    out.sort(key=lambda x: (x["class_name"], x["subject_name"] or ""))
+    return out
 
 
 @router.get("/my-teaching-scope")

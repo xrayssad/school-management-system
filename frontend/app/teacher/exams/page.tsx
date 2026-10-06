@@ -121,16 +121,38 @@ export default function TeacherExamsPage() {
     setBusy(true);
     try {
       const examId = await ensureExamId(activeSubjectId);
-      const res = await fetch(`${API}/teacher/exams/${examId}/grade-one`, {
+      // Resolve profile_id from board if possible
+      let profileId: string | null = null;
+      const board = subjects?.length ? subjects : [];
+      for (const s of board) {
+        const st = (s.students || []).find(
+          (x: any) =>
+            String(x.student_code).trim() === studentCode.trim() ||
+            String(x.student_code).toLowerCase() === studentCode.trim().toLowerCase()
+        );
+        if (st?.profile_id) {
+          profileId = st.profile_id;
+          break;
+        }
+      }
+      const res = await fetch(`${API}/teacher/grades/exam/${examId}/marks`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token()}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          exam_id: examId,
-          student_code: studentCode.trim(),
-          marks_obtained: parseFloat(marks),
+          marks: [
+            profileId
+              ? {
+                  student_profile_id: profileId,
+                  marks_obtained: parseFloat(String(marks)),
+                }
+              : {
+                  student_code: studentCode.trim(),
+                  marks_obtained: parseFloat(String(marks)),
+                },
+          ],
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -138,7 +160,7 @@ export default function TeacherExamsPage() {
         const d = body.detail;
         throw new Error(typeof d === "string" ? d : JSON.stringify(d || body));
       }
-      setMsg(`${body.full_name}: ${body.marks_obtained} (${body.grade_letter}) · submitted`);
+      setMsg(body.saved != null ? `Imehifadhiwa: ${body.saved} (ruka: ${body.skipped ?? 0})` : (body.full_name ? `${body.full_name}: ${body.marks_obtained}` : 'Imehifadhiwa'));
       setStudentCode("");
       setMarks("");
       await loadBoard(className);

@@ -239,7 +239,8 @@ def exam_roster(exam_id: str, db: Session = Depends(get_db), user: User = Depend
 
 
 class MarkIn(BaseModel):
-    student_profile_id: str
+    student_profile_id: str | None = None
+    student_code: str | None = None
     marks_obtained: float
     remarks: str | None = None
 
@@ -275,6 +276,19 @@ def save_marks(
     saved = 0
     skipped = 0
     for m in body.marks:
+        if not getattr(m, "student_profile_id", None):
+            code = getattr(m, "student_code", None)
+            if not code:
+                skipped += 1
+                continue
+            row = db.execute(
+                text("SELECT id FROM student_profiles WHERE student_code = :c"),
+                {"c": str(code).strip()},
+            ).first()
+            if not row:
+                skipped += 1
+                continue
+            m.student_profile_id = row[0]
         # SECURITY: usikubali profile nje ya darasa la mtihani
         if not _profile_in_exam_class(db, m.student_profile_id, class_name):
             skipped += 1
