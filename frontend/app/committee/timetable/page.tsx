@@ -6,7 +6,7 @@ import { allClasses, CLASS_ORDER } from "@/lib/classes";
 import { formatSchoolDay, SCHOOL_DAYS } from "@/lib/school-days";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Calendar, Plus, CheckCircle, Clock } from "lucide-react";
+import { Calendar, Plus, CheckCircle, Pencil, Trash2, Clock } from "lucide-react";
 import { committeeApi } from "@/lib/api";
 import type { SchoolClass, SubjectItem, TeacherItem, CommitteeTimetableEntry } from "@/lib/types";
 import { colors } from "@/lib/colors";
@@ -107,6 +107,38 @@ export default function CommitteeTimetablePage() {
     }
   }
 
+
+  async function handleDelete(id: string) {
+    if (!confirm("Futa kipindi hiki kwenye ratiba?")) return;
+    try {
+      await committeeApi.deleteTimetable(id);
+      await load();
+    } catch (e: any) {
+      alert(e.message || "Imeshindikana kufuta");
+    }
+  }
+
+  async function handleEdit(item: any) {
+    const start = prompt("Muda wa kuanza (HH:MM)", item.start_time);
+    if (start === null) return;
+    const end = prompt("Muda wa kumaliza (HH:MM)", item.end_time);
+    if (end === null) return;
+    try {
+      await committeeApi.updateTimetable(item.id, {
+        subject_id: item.subject_id,
+        teacher_id: item.teacher_id,
+        class_id: item.class_name || item.class_id,
+        day_of_week: item.day_of_week,
+        start_time: start,
+        end_time: end,
+      });
+      await load();
+    } catch (e: any) {
+      alert(e.message || "Imeshindikana kuhariri");
+    }
+  }
+
+
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
@@ -182,6 +214,7 @@ export default function CommitteeTimetablePage() {
                   <th className="px-4 py-3 font-semibold" style={{ color: colors.primary }}>Mwalimu</th>
                   <th className="px-4 py-3 font-semibold" style={{ color: colors.primary }}>Darasa</th>
                   <th className="px-4 py-3 font-semibold" style={{ color: colors.primary }}>Hali</th>
+                  <th className="px-4 py-3 font-semibold" style={{ color: colors.primary }}>Vitendo</th>
                 </tr>
               </thead>
               <tbody>
@@ -196,6 +229,25 @@ export default function CommitteeTimetablePage() {
                       <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: colors.soft, color: colors.primary }}>
                         {item.status === "published" ? "Imechapishwa" : "Rasimu"}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(item)}
+                          className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium"
+                          style={{ borderColor: colors.line, color: colors.primary }}
+                        >
+                          Hariri
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(item.id)}
+                          className="inline-flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-700"
+                        >
+                          Futa
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

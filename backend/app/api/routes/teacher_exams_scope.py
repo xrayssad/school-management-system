@@ -155,7 +155,7 @@ def class_exam_board(
     return {"class_name": class_name, "subjects": subjects_out}
 
 
-@router.post("/ensure-exam")
+@router.api_route("/ensure-exam", methods=["GET", "POST"])
 def ensure_exam(
     class_name: str = Query(...),
     subject_id: str = Query(...),

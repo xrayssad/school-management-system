@@ -164,6 +164,16 @@ export const committeeApi = {
     start_time: string;
     end_time: string;
   }) => api.post<CommitteeTimetableEntry>("/committee/timetable", data),
+  updateTimetable: (id: string, data: {
+    subject_id: string;
+    teacher_id: string;
+    class_id: string;
+    day_of_week: number;
+    start_time: string;
+    end_time: string;
+  }) => api.put<CommitteeTimetableEntry>(`/committee/timetable/${id}`, data),
+  deleteTimetable: (id: string) =>
+    api.delete<{ ok: boolean }>(`/committee/timetable/${id}`),
   publishTimetable: () =>
     api.post<{ updated: number }>("/committee/timetable/publish"),
 };
