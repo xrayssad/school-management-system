@@ -112,7 +112,7 @@ export default function CommitteeTimetablePage() {
     if (!confirm("Futa kipindi hiki kwenye ratiba?")) return;
     try {
       await committeeApi.deleteTimetable(id);
-      await load();
+      await loadData();
     } catch (e: any) {
       alert(e.message || "Imeshindikana kufuta");
     }
@@ -132,7 +132,7 @@ export default function CommitteeTimetablePage() {
         start_time: start,
         end_time: end,
       });
-      await load();
+      await loadData();
     } catch (e: any) {
       alert(e.message || "Imeshindikana kuhariri");
     }
