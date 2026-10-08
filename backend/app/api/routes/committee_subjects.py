@@ -144,7 +144,7 @@ def assign(body: ClassSubjectIn, db: Session = Depends(get_db), _: User = Depend
     cid = str(uuid.uuid4())
     db.execute(
         text(
-            "INSERT INTO class_subjects (id, class_name, subject_id, is_active) VALUES (:id, :c, :s, true)"
+            "INSERT INTO class_subjects (id, class_name, subject_id, is_active, created_at) VALUES (:id, :c, :s, true, NOW())"
         ),
         {"id": cid, "c": body.class_name, "s": body.subject_id},
     )
