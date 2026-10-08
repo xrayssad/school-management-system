@@ -11,3 +11,4 @@ from app.models.exam_policy import ClassPromotionRule, ExamReportFile  # noqa
 from app.models.exam_policy import ManualExamEvaluation, ManualBestStudent, ManualSchoolTop  # noqa
 from app.models.exam_policy import ManualClassBest  # noqa
 from app.models.grading import GradeScale  # noqa
+from app.models.class_subjects import ClassSubject  # noqa: F401
