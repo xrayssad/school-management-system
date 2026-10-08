@@ -84,10 +84,17 @@ export default function CommitteeSubjectsPage() {
   }
 
   async function unassign(class_name: string, subject_id: string) {
-    await fetch(
+    setError("");
+    const res = await fetch(
       `${API}/committee/subjects/assign?class_name=${encodeURIComponent(class_name)}&subject_id=${encodeURIComponent(subject_id)}`,
       { method: "DELETE", headers: { Authorization: `Bearer ${token()}` } }
     );
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setError(typeof body.detail === "string" ? body.detail : "Imeshindikana kuondoa");
+      return;
+    }
+    setMsg("Somo limeondolewa kwenye darasa");
     await load();
   }
 

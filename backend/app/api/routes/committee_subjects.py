@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import uuid
-from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -56,6 +58,106 @@ def create_subject(body: SubjectIn, db: Session = Depends(get_db), _: User = Dep
     return {"id": sid, "name": name, "code": code}
 
 
+@router.get("/by-class")
+def by_class(db: Session = Depends(get_db), _: User = Depends(require_committee)):
+    rows = db.execute(
+        text(
+            """
+            SELECT cs.class_name, s.id AS subject_id, s.name AS subject_name, s.code
+            FROM class_subjects cs
+            JOIN subjects s ON s.id = cs.subject_id
+            WHERE COALESCE(cs.is_active, true) = true
+            ORDER BY cs.class_name, s.name
+            """
+        )
+    ).mappings().all()
+    by: dict = {cn: [] for cn in CLASS_ORDER}
+    for r in rows:
+        cn = r["class_name"]
+        if cn not in by:
+            by[cn] = []
+        by[cn].append(
+            {
+                "subject_id": r["subject_id"],
+                "subject_name": r["subject_name"],
+                "code": r["code"],
+            }
+        )
+    ordered = list(CLASS_ORDER) + [k for k in by if k not in CLASS_ORDER]
+    return [{"class_name": cn, "subjects": by.get(cn, [])} for cn in ordered]
+
+
+@router.get("/options")
+def options_for_forms(db: Session = Depends(get_db), _: User = Depends(require_committee)):
+    subjects = db.execute(
+        text("SELECT id, name, code FROM subjects ORDER BY name")
+    ).mappings().all()
+    by = db.execute(
+        text(
+            """
+            SELECT class_name, subject_id FROM class_subjects
+            WHERE COALESCE(is_active, true) = true
+            """
+        )
+    ).mappings().all()
+    return {
+        "classes": list(CLASS_ORDER),
+        "subjects": [dict(s) for s in subjects],
+        "class_subject_ids": [dict(b) for b in by],
+    }
+
+
+# --- assign / unassign BEFORE /{subject_id} so "assign" is not treated as an id ---
+
+@router.post("/assign")
+def assign(body: ClassSubjectIn, db: Session = Depends(get_db), _: User = Depends(require_committee)):
+    exists = db.execute(
+        text("SELECT id FROM class_subjects WHERE class_name=:c AND subject_id=:s"),
+        {"c": body.class_name, "s": body.subject_id},
+    ).scalar()
+    if exists:
+        db.execute(
+            text(
+                "UPDATE class_subjects SET is_active = true WHERE class_name=:c AND subject_id=:s"
+            ),
+            {"c": body.class_name, "s": body.subject_id},
+        )
+        db.commit()
+        return {"ok": True, "id": exists, "note": "tayari"}
+    cid = str(uuid.uuid4())
+    db.execute(
+        text(
+            """
+            INSERT INTO class_subjects (id, class_name, subject_id, is_active, created_at)
+            VALUES (:id, :c, :s, true, :ca)
+            """
+        ),
+        {
+            "id": cid,
+            "c": body.class_name,
+            "s": body.subject_id,
+            "ca": datetime.utcnow(),
+        },
+    )
+    db.commit()
+    return {"ok": True, "id": cid}
+
+
+@router.delete("/assign")
+def unassign(
+    class_name: str = Query(...),
+    subject_id: str = Query(...),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_committee),
+):
+    n = db.execute(
+        text("DELETE FROM class_subjects WHERE class_name=:c AND subject_id=:s"),
+        {"c": class_name, "s": subject_id},
+    ).rowcount
+    db.commit()
+    return {"ok": True, "deleted": n}
+
+
 @router.put("/{subject_id}")
 def update_subject(
     subject_id: str,
@@ -79,107 +181,14 @@ def update_subject(
 
 
 @router.delete("/{subject_id}")
-def delete_subject(subject_id: str, db: Session = Depends(get_db), _: User = Depends(require_committee)):
-    db.execute(text("DELETE FROM class_subjects WHERE subject_id = :id"), {"id": subject_id})
-    db.execute(text("DELETE FROM subjects WHERE id = :id"), {"id": subject_id})
-    db.commit()
-    return {"ok": True}
-
-
-@router.get("/by-class")
-def by_class(db: Session = Depends(get_db), _: User = Depends(require_committee)):
-    """Masomo kwa kila darasa — salama hata table/column haipo."""
-    by: dict = {cn: [] for cn in CLASS_ORDER}
-    try:
-        rows = db.execute(
-            text(
-                """
-                SELECT cs.class_name, s.id AS subject_id, s.name AS subject_name, s.code
-                FROM class_subjects cs
-                JOIN subjects s ON s.id = cs.subject_id
-                WHERE COALESCE(cs.is_active, true) = true
-                ORDER BY cs.class_name, s.name
-                """
-            )
-        ).mappings().all()
-    except Exception:
-        db.rollback()
-        try:
-            rows = db.execute(
-                text(
-                    """
-                    SELECT cs.class_name, s.id AS subject_id, s.name AS subject_name, s.code
-                    FROM class_subjects cs
-                    JOIN subjects s ON s.id = cs.subject_id
-                    ORDER BY cs.class_name, s.name
-                    """
-                )
-            ).mappings().all()
-        except Exception:
-            db.rollback()
-            return [{"class_name": cn, "subjects": []} for cn in CLASS_ORDER]
-    for r in rows:
-        cn = r["class_name"]
-        if cn not in by:
-            by[cn] = []
-        by[cn].append(
-            {"subject_id": r["subject_id"], "subject_name": r["subject_name"], "code": r["code"]}
-        )
-    ordered = list(CLASS_ORDER) + [k for k in by if k not in CLASS_ORDER]
-    return [{"class_name": cn, "subjects": by.get(cn, [])} for cn in ordered]
-
-
-
-@router.post("/assign")
-def assign(body: ClassSubjectIn, db: Session = Depends(get_db), _: User = Depends(require_committee)):
-    if body.class_name not in CLASS_ORDER and not body.class_name.startswith("Darasa"):
-        # still allow listed classes
-        pass
-    exists = db.execute(
-        text("SELECT id FROM class_subjects WHERE class_name=:c AND subject_id=:s"),
-        {"c": body.class_name, "s": body.subject_id},
-    ).scalar()
-    if exists:
-        return {"ok": True, "id": exists, "note": "tayari"}
-    cid = str(uuid.uuid4())
-    db.execute(
-        text(
-            "INSERT INTO class_subjects (id, class_name, subject_id, is_active, created_at) VALUES (:id, :c, :s, true, NOW())"
-        ),
-        {"id": cid, "c": body.class_name, "s": body.subject_id},
-    )
-    db.commit()
-    return {"ok": True, "id": cid}
-
-
-@router.delete("/assign")
-def unassign(
-    class_name: str,
+def delete_subject(
     subject_id: str,
     db: Session = Depends(get_db),
     _: User = Depends(require_committee),
 ):
-    db.execute(
-        text("DELETE FROM class_subjects WHERE class_name=:c AND subject_id=:s"),
-        {"c": class_name, "s": subject_id},
-    )
+    db.execute(text("DELETE FROM class_subjects WHERE subject_id = :id"), {"id": subject_id})
+    n = db.execute(text("DELETE FROM subjects WHERE id = :id"), {"id": subject_id}).rowcount
+    if not n:
+        raise HTTPException(404, detail="Somo halipo")
     db.commit()
     return {"ok": True}
-
-
-@router.get("/options")
-def options_for_forms(db: Session = Depends(get_db), _: User = Depends(require_committee)):
-    """Orodha fupi kwa dropdowns (timetable, exams, teachers)."""
-    subjects = db.execute(text("SELECT id, name, code FROM subjects ORDER BY name")).mappings().all()
-    by = db.execute(
-        text(
-            """
-            SELECT class_name, subject_id FROM class_subjects WHERE is_active = true
-            """
-        )
-    ).mappings().all()
-    return {
-        "classes": list(CLASS_ORDER),
-        "subjects": [dict(s) for s in subjects],
-        "class_subject_ids": [dict(b) for b in by],
-    }
